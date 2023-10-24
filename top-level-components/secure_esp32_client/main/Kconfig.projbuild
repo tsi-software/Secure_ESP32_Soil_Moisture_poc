@@ -6,11 +6,25 @@ menu "Secure Soil Moisture Sensor"
         help
             URL of the MQTT Broker to connect to.
 
-    config NTP_SERVER_URL
-        string "NTP Time Server URL"
+    config SNTP_TIME_SERVER
+        string "SNTP server name"
         default "pool.ntp.org"
         help
-            URL of the NTP Time Server to connect to.
+            Hostname of the main SNTP server.
+
+    choice SNTP_TIME_SYNC_METHOD
+        prompt "Time synchronization method"
+        default SNTP_TIME_SYNC_METHOD_IMMED
+        help
+            Time synchronization method.
+
+        config SNTP_TIME_SYNC_METHOD_IMMED
+            bool "update time immediately when received"
+        config SNTP_TIME_SYNC_METHOD_SMOOTH
+            bool "update time with smooth method (adjtime)"
+        config SNTP_TIME_SYNC_METHOD_CUSTOM
+            bool "custom implementation"
+    endchoice
 
     config ESP_WIFI_SSID
         string "WiFi SSID"

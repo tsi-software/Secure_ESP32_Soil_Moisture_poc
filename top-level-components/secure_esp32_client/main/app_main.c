@@ -25,45 +25,13 @@
 //#include "lwip/err.h"
 //#include "lwip/sys.h"
 
-#include "wifi_station.h"
-
-
-/***
-#include <stdio.h>
-#include <stdint.h>
-#include <stddef.h>
-#include <string.h>
-#include "esp_wifi.h"
-#include "esp_system.h"
-#include "nvs_flash.h"
-#include "esp_event_loop.h"
-
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "freertos/semphr.h"
-#include "freertos/queue.h"
-#include "freertos/event_groups.h"
-
-#include "lwip/sockets.h"
-#include "lwip/dns.h"
-#include "lwip/netdb.h"
-#include "lwip/apps/sntp.h"
-
-#include "esp_log.h"
-#include "mqtt_client.h"
-
-#include "mqtt_event_handler.h"
-#include "app_queues.h"
-***/
+#include "app_sntp_sync_time.h"
+#include "app_timer.h"
+//#include "app_touch_pads.h"
+#include "app_wifi_station.h"
 
 
 static const char *LOG_TAG = "Secure_Soil_Moisture";
-
-
-/***
-static EventGroupHandle_t wifi_event_group;
-const static int CONNECTED_BIT = BIT0;
-***/
 
 
 //extern const uint8_t ca_cert_pem_start[] asm("_binary_mosq_ca_crt_start");
@@ -74,51 +42,6 @@ extern const uint8_t client_cert_pem_start[] asm("_binary_mosq_client_crt_start"
 extern const uint8_t client_cert_pem_end[] asm("_binary_mosq_client_crt_end");
 extern const uint8_t client_key_pem_start[] asm("_binary_mosq_client_key_start");
 extern const uint8_t client_key_pem_end[] asm("_binary_mosq_client_key_end");
-
-
-
-/***
-static esp_err_t wifi_event_handler(void *ctx, system_event_t *event) {
-    switch (event->event_id) {
-        case SYSTEM_EVENT_STA_START:
-            esp_wifi_connect();
-            break;
-        case SYSTEM_EVENT_STA_GOT_IP:
-            xEventGroupSetBits(wifi_event_group, CONNECTED_BIT);
-
-            break;
-        case SYSTEM_EVENT_STA_DISCONNECTED:
-            esp_wifi_connect();
-            xEventGroupClearBits(wifi_event_group, CONNECTED_BIT);
-            break;
-        default:
-            break;
-    }
-    return ESP_OK;
-}
-
-
-static void wifi_init(void) {
-    tcpip_adapter_init();
-    wifi_event_group = xEventGroupCreate();
-    ESP_ERROR_CHECK(esp_event_loop_init(wifi_event_handler, NULL));
-    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-    ESP_ERROR_CHECK(esp_wifi_init(&cfg));
-    ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
-    wifi_config_t wifi_config = {
-        .sta = {
-            .ssid = CONFIG_WIFI_SSID,
-            .password = CONFIG_WIFI_PASSWORD,
-        },
-    };
-    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
-    ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config));
-    ESP_LOGI(LOG_TAG, "start the WIFI SSID:[%s]", CONFIG_WIFI_SSID);
-    ESP_ERROR_CHECK(esp_wifi_start());
-    ESP_LOGI(LOG_TAG, "Waiting for wifi");
-    xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT, false, true, portMAX_DELAY);
-}
-***/
 
 
 /***
@@ -208,7 +131,11 @@ void app_main(void)
     ESP_LOGI(LOG_TAG, "[APP] IDF version: %s", esp_get_idf_version());
 
     esp_log_level_set("*", ESP_LOG_INFO);
-    esp_log_level_set("MQTT_CLIENT", ESP_LOG_VERBOSE);
+    esp_log_level_set("Secure_Soil_Moisture", ESP_LOG_VERBOSE);
+    esp_log_level_set("app_sntp_sync_time", ESP_LOG_VERBOSE);
+    esp_log_level_set("app_timer", ESP_LOG_VERBOSE);
+    esp_log_level_set("app_wifi_station", ESP_LOG_VERBOSE);
+
     esp_log_level_set("TRANSPORT_BASE", ESP_LOG_VERBOSE);
     // esp_log_level_set("TRANSPORT_TCP", ESP_LOG_VERBOSE);
     // esp_log_level_set("TRANSPORT_SSL", ESP_LOG_VERBOSE);
@@ -226,7 +153,12 @@ void app_main(void)
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
 
-    wifi_station_init();
+    app_wifi_station_init();
+    app_sntp_sync_time();
+    app_timer_init();
+
+    //app_touch_pads_init();
+    //read_touch_pads();
 
     //TODO:...
     //sntp_set_time();
