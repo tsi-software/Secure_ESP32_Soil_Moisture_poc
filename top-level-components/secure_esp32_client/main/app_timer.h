@@ -24,7 +24,7 @@ enum {
 #endif
 
 
-extern void app_timer_init(esp_event_loop_handle_t *event_loop_handle);
+extern void app_timer_init(esp_event_loop_handle_t event_loop_handle);
 
 
 #endif // _APP_TIMER_H_

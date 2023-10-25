@@ -15,10 +15,10 @@
 #include <string.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "freertos/event_groups.h"
+//#include "freertos/event_groups.h"
 #include "esp_system.h"
 #include "esp_wifi.h"
-#include "esp_event.h"
+//#include "esp_event.h"
 #include "esp_log.h"
 #include "nvs_flash.h"
 
@@ -28,7 +28,7 @@
 #include "app_event_loop.h"
 #include "app_sntp_sync_time.h"
 #include "app_timer.h"
-//#include "app_touch_pads.h"
+#include "app_touch_pads.h"
 #include "app_wifi_station.h"
 
 
@@ -97,9 +97,10 @@ void app_main(void)
 
     esp_log_level_set("*", ESP_LOG_INFO);
     esp_log_level_set("Secure_Soil_Moisture", ESP_LOG_VERBOSE);
-    esp_log_level_set("app_event_loop", ESP_LOG_DEBUG);
+    esp_log_level_set("app_event_loop", ESP_LOG_VERBOSE);
     esp_log_level_set("app_sntp_sync_time", ESP_LOG_VERBOSE);
-    esp_log_level_set("app_timer", ESP_LOG_DEBUG);
+    esp_log_level_set("app_timer", ESP_LOG_VERBOSE);
+    esp_log_level_set("app_touch_pads", ESP_LOG_VERBOSE);
     esp_log_level_set("app_wifi_station", ESP_LOG_VERBOSE);
 
     esp_log_level_set("TRANSPORT_BASE", ESP_LOG_DEBUG);
@@ -122,12 +123,9 @@ void app_main(void)
 
     app_wifi_station_init();
     app_sntp_sync_time();
-    app_timer_init(&app_event_loop_handle);
-
-    //app_touch_pads_init();
-    //read_touch_pads();
+    app_timer_init(app_event_loop_handle);
+    app_read_touch_pads_init(app_event_loop_handle);
 
     //TODO:...
-    //sntp_set_time();
     //app_mqtt_start();
 }

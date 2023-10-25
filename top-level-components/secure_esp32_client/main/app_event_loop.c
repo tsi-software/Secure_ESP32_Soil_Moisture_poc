@@ -32,5 +32,6 @@ esp_err_t create_app_event_loop(esp_event_loop_handle_t *event_loop_handle)
     esp_err_t err_result = esp_event_loop_create(&event_loop_args, event_loop_handle);
     //ESP_ERROR_CHECK(err_result);
 
+    ESP_LOGI(LOG_TAG, "App event loop created.");
     return err_result;
 }
