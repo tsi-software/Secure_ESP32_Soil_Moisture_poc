@@ -25,6 +25,7 @@
 //#include "lwip/err.h"
 //#include "lwip/sys.h"
 
+#include "app_event_loop.h"
 #include "app_sntp_sync_time.h"
 #include "app_timer.h"
 //#include "app_touch_pads.h"
@@ -32,6 +33,8 @@
 
 
 static const char *LOG_TAG = "Secure_Soil_Moisture";
+
+static esp_event_loop_handle_t app_event_loop_handle;
 
 
 //extern const uint8_t ca_cert_pem_start[] asm("_binary_mosq_ca_crt_start");
@@ -43,44 +46,6 @@ extern const uint8_t client_cert_pem_end[] asm("_binary_mosq_client_crt_end");
 extern const uint8_t client_key_pem_start[] asm("_binary_mosq_client_key_start");
 extern const uint8_t client_key_pem_end[] asm("_binary_mosq_client_key_end");
 
-
-/***
-static void sntp_set_time() {
-    ESP_LOGI(LOG_TAG, "Initializing SNTP - server '%s'", CONFIG_NTP_SERVER_URL);
-    sntp_setoperatingmode(SNTP_OPMODE_POLL);
-    sntp_setservername(0, CONFIG_NTP_SERVER_URL);
-    //sntp_setservername(0, "maggie");
-    //sntp_setservername(0, "pool.ntp.org");
-    sntp_init();
-
-    // wait for time to be set
-    time_t now = 0;
-    struct tm timeinfo = { 0 };
-    int retry = 0;
-    const int retry_count = 10;
-    while(timeinfo.tm_year < (2016 - 1900) && ++retry < retry_count) {
-        ESP_LOGI(LOG_TAG, "Waiting for system time to be set... (%d/%d)", retry, retry_count);
-        vTaskDelay(2000 / portTICK_PERIOD_MS);
-        time(&now);
-        localtime_r(&now, &timeinfo);
-    }
-
-    time(&now);
-    localtime_r(&now, &timeinfo);
-    // Is time set? If not, tm_year will be (1970 - 1900).
-    if (timeinfo.tm_year < (2016 - 1900)) {
-        ESP_LOGE(LOG_TAG, "Time did NOT get set via NTP.");
-    }
-
-    char strftime_buf[64];
-    // Set timezone to Eastern Standard Time and print local time
-    setenv("TZ", "EST5EDT,M3.2.0/2,M11.1.0", 1);
-    tzset();
-    localtime_r(&now, &timeinfo);
-    strftime(strftime_buf, sizeof(strftime_buf), "%c", &timeinfo);
-    ESP_LOGI(LOG_TAG, "The current date/time in New York is: %s", strftime_buf);
-}
-***/
 
 
 /***
@@ -132,15 +97,16 @@ void app_main(void)
 
     esp_log_level_set("*", ESP_LOG_INFO);
     esp_log_level_set("Secure_Soil_Moisture", ESP_LOG_VERBOSE);
+    esp_log_level_set("app_event_loop", ESP_LOG_DEBUG);
     esp_log_level_set("app_sntp_sync_time", ESP_LOG_VERBOSE);
-    esp_log_level_set("app_timer", ESP_LOG_VERBOSE);
+    esp_log_level_set("app_timer", ESP_LOG_DEBUG);
     esp_log_level_set("app_wifi_station", ESP_LOG_VERBOSE);
 
-    esp_log_level_set("TRANSPORT_BASE", ESP_LOG_VERBOSE);
-    // esp_log_level_set("TRANSPORT_TCP", ESP_LOG_VERBOSE);
-    // esp_log_level_set("TRANSPORT_SSL", ESP_LOG_VERBOSE);
-    esp_log_level_set("TRANSPORT", ESP_LOG_VERBOSE);
-    esp_log_level_set("OUTBOX", ESP_LOG_VERBOSE);
+    esp_log_level_set("TRANSPORT_BASE", ESP_LOG_DEBUG);
+    // esp_log_level_set("TRANSPORT_TCP", ESP_LOG_DEBUG);
+    // esp_log_level_set("TRANSPORT_SSL", ESP_LOG_DEBUG);
+    esp_log_level_set("TRANSPORT", ESP_LOG_DEBUG);
+    esp_log_level_set("OUTBOX", ESP_LOG_DEBUG);
 
     //Initialize NVS
     ret = nvs_flash_init();
@@ -152,10 +118,11 @@ void app_main(void)
 
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
+    ESP_ERROR_CHECK(create_app_event_loop(&app_event_loop_handle));
 
     app_wifi_station_init();
     app_sntp_sync_time();
-    app_timer_init();
+    app_timer_init(&app_event_loop_handle);
 
     //app_touch_pads_init();
     //read_touch_pads();
