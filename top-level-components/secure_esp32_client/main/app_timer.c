@@ -45,7 +45,6 @@ void app_timer_init(esp_event_loop_handle_t event_loop_handle)
     ESP_ERROR_CHECK(esp_timer_create(&periodic_timer_args, &periodic_timer));
 
     // Start the timer for every 1 second.
-    //ESP_LOGW(LOG_TAG, "App Timer NEEDS TO BE STARTED!");
     ESP_ERROR_CHECK(esp_timer_start_periodic(periodic_timer, 1000000));
     ESP_LOGI(LOG_TAG, "App Timer Started");
 }
