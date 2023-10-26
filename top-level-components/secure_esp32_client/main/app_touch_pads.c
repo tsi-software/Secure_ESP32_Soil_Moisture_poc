@@ -19,10 +19,19 @@ app_touch_pads.c
 #define MEASUREMENT_INTERVAL_MSEC  (100 - MEASUREMENT_DURATION_MSEC)
 #define FILTER_TOUCH_PERIOD_MSEC   (1000)
 
+//TODO: implement this in "menuconfig".
+// The difference between a prior value and a new value that triggers
+//  the new value to be posted a an event.
+#define UPDATE_THRESHOLD_VALUE 16
+
 static const char* LOG_TAG = "app_touch_pads";
 
+static uint16_t prior_touch_value[TOUCH_PAD_MAX];
+static bool force_update = true;
 
 
+
+/***
 static void app_timer_tick_handler(void* handler_args, esp_event_base_t base, int32_t id, void* event_data)
 {
     int64_t time_since_boot = esp_timer_get_time();
@@ -43,13 +52,27 @@ static void app_timer_tick_handler(void* handler_args, esp_event_base_t base, in
 #endif
     }
 }
+***/
 
 
 
 #if TOUCH_FILTER_MODE_EN
 static void touch_filter_callback(uint16_t *raw_value, uint16_t *filtered_value)
 {
-    ESP_LOGW(LOG_TAG, "touch_filter_callback");
+    ESP_LOGV(LOG_TAG, "touch_filter_callback");
+
+    uint16_t prior_value, new_value, diff;
+    for (int ndx = 0; ndx < TOUCH_PAD_MAX; ++ndx) {
+        prior_value = prior_touch_value[ndx];
+        new_value = filtered_value[ndx];
+        diff = prior_value > new_value ? prior_value - new_value : new_value - prior_value;
+        if (force_update || diff > UPDATE_THRESHOLD_VALUE) {
+            prior_touch_value[ndx] = new_value;
+            ESP_LOGD(LOG_TAG, "touch - [%d] %u (diff=%u)", ndx, new_value, diff);
+            //TODO: post this event.
+        }
+    }
+    force_update = false;
 }
 #endif
 
