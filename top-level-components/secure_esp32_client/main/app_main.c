@@ -26,6 +26,7 @@
 //#include "lwip/sys.h"
 
 #include "app_event_loop.h"
+#include "app_mqtt50.h"
 #include "app_sntp_sync_time.h"
 #include "app_timer.h"
 #include "app_touch_pads.h"
@@ -37,6 +38,7 @@ static const char *LOG_TAG = "Secure_Soil_Moisture";
 static esp_event_loop_handle_t app_event_loop_handle;
 
 
+/***
 //extern const uint8_t ca_cert_pem_start[] asm("_binary_mosq_ca_crt_start");
 //extern const uint8_t ca_cert_pem_end[] asm("_binary_mosq_ca_crt_end");
 extern const uint8_t server_cert_pem_start[] asm("_binary_mosq_server_crt_start");
@@ -45,7 +47,7 @@ extern const uint8_t client_cert_pem_start[] asm("_binary_mosq_client_crt_start"
 extern const uint8_t client_cert_pem_end[] asm("_binary_mosq_client_crt_end");
 extern const uint8_t client_key_pem_start[] asm("_binary_mosq_client_key_start");
 extern const uint8_t client_key_pem_end[] asm("_binary_mosq_client_key_end");
-
+***/
 
 
 /***
@@ -98,6 +100,7 @@ void app_main(void)
     esp_log_level_set("*", ESP_LOG_INFO);
     esp_log_level_set("Secure_Soil_Moisture", ESP_LOG_VERBOSE);
     esp_log_level_set("app_event_loop", ESP_LOG_VERBOSE);
+    esp_log_level_set("app_mqtt", ESP_LOG_VERBOSE);
     esp_log_level_set("app_sntp_sync_time", ESP_LOG_VERBOSE);
     esp_log_level_set("app_timer", ESP_LOG_VERBOSE);
     esp_log_level_set("app_touch_pads", ESP_LOG_VERBOSE);
@@ -123,9 +126,8 @@ void app_main(void)
 
     app_wifi_station_init();
     app_sntp_sync_time();
+    app_mqtt50_start();
+
     app_timer_init(app_event_loop_handle);
     app_read_touch_pads_init(app_event_loop_handle);
-
-    //TODO:...
-    //app_mqtt_start();
 }

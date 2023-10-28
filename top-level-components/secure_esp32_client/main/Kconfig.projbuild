@@ -2,7 +2,7 @@ menu "Secure Soil Moisture Sensor"
 
     config MQTT_BROKER_URL
         string "MQTT Broker URL"
-        default "mqtts://iot.eclipse.org"
+        default "mqtts://iot.eclipse.org:8883"
         help
             URL of the MQTT Broker to connect to.
 
