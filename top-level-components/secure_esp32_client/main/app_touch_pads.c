@@ -181,7 +181,7 @@ void app_read_touch_pads_init(esp_event_loop_handle_t event_loop)
     ESP_ERROR_CHECK(touch_pad_set_filter_read_cb(&touch_filter_callback));
 
 #else //TOUCH_FILTER_MODE_EN
-    // Filter Mode NOT enabled.
+    // Filter Mode NOT enabled - use app timer events.
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(
             event_loop_handle,
             APP_TIMER_EVENTS, APP_TIMER_TICK_EVENT,

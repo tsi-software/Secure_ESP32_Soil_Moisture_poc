@@ -2,6 +2,7 @@
 app_mqtt50.c
 */
 
+#include <stdio.h>
 #include "freertos/FreeRTOS.h"
 //#include "freertos/task.h"
 #include "esp_log.h"
@@ -9,6 +10,7 @@ app_mqtt50.c
 #include "mqtt_client.h"
 
 #include "app_mqtt50.h"
+#include "app_touch_pads.h"
 
 
 static const char *LOG_TAG = "app_mqtt";
@@ -210,7 +212,40 @@ static void mqtt5_event_handler(void *handler_args, esp_event_base_t base, int32
 }
 
 
-void app_mqtt50_start(void)
+static void app_touch_value_handler(void* handler_args, esp_event_base_t base, int32_t id, void* event_data)
+{
+    app_touch_value_change_event_payload *payload = event_data;
+    // typedef struct {
+    //     uint16_t touch_value;
+    //     uint8_t touch_pad_num;
+    // } app_touch_value_change_event_payload;
+
+    // MQTT Topic
+    // soilmoisture/<device-id>/{analog,capacitive}/<sensor-id>
+    // The Message is the sensor's numeric value formatted as a string.
+    int num_of_characters;
+    char topic[27 + 4 + 2]; //2^8 = 256 (i.e. 3 characters)
+    char data[6 + 2]; //2^16 = 65536 (i.e. 5 characters)
+    //TODO: test 'num_of_characters' and handle error situation as necessary.
+    //TODO: implement a meaningful <device-id>.
+    num_of_characters = snprintf(topic, sizeof(topic), "/soilmoisture/1/capacitive/%u", payload->touch_pad_num);
+    num_of_characters = snprintf(data, sizeof(data), "%u", payload->touch_value);
+
+    // int esp_mqtt_client_enqueue(
+    //     esp_mqtt_client_handle_t client,
+    //     const char *topic,
+    //     const char *data, int len,
+    //     int qos, int retain, bool store
+    // )
+    esp_mqtt_client_handle_t mqtt_client = handler_args;
+    esp_mqtt_client_enqueue(mqtt_client, topic, data,0, 0,0,true);
+
+    ESP_LOGI(LOG_TAG, "MQTT ENQUEUED: %s, %s", topic, data);
+}
+
+
+
+void app_mqtt50_start(esp_event_loop_handle_t event_loop)
 {
     esp_mqtt5_connection_property_config_t connect_property = {
         .session_expiry_interval = 0, //10,  // seconds
@@ -254,33 +289,27 @@ void app_mqtt50_start(void)
 
     // If you call esp_mqtt5_client_set_user_property to set user properties, DO NOT forget to delete them.
     // esp_mqtt5_client_set_connect_property will malloc buffer to store the user_property and you can delete it after
-    esp_mqtt5_client_delete_user_property(connect_property.user_property);
-    esp_mqtt5_client_delete_user_property(connect_property.will_user_property);
+    ////esp_mqtt5_client_delete_user_property(connect_property.user_property);
+    ////esp_mqtt5_client_delete_user_property(connect_property.will_user_property);
 
     // The last argument may be used to pass data to the event handler, in this example mqtt_event_handler 
     esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt5_event_handler, NULL);
     esp_mqtt_client_start(client);
+
+    // esp_err_t esp_event_handler_instance_register_with(
+    //     esp_event_loop_handle_t event_loop,
+    //     esp_event_base_t event_base,
+    //     int32_t event_id,
+    //     esp_event_handler_t event_handler,
+    //     void *event_handler_arg,
+    //     esp_event_handler_instance_t *instance
+    // )
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(
+            event_loop,
+            APP_TOUCH_EVENTS,
+            APP_TOUCH_VALUE_CHANGE_EVENT,
+            app_touch_value_handler,
+            client,
+            NULL
+    ));
 }
-
-
-/***
-void app_mqtt50_start(void)
-{
-  const esp_mqtt_client_config_t mqtt_cfg = {
-    .broker.address.uri = CONFIG_MQTT_BROKER_URL,
-    .broker.verification.certificate = (const char *)ca_cert_pem_start,
-    .credentials = {
-      .authentication = {
-        .certificate = (const char *)client_cert_pem_start,
-        .key = (const char *)client_key_pem_start,
-      },
-    }
-  };
-
-    ESP_LOGI(LOG_TAG, "[APP] Free memory: %" PRIu32 " bytes", esp_get_free_heap_size());
-    esp_mqtt_client_handle_t client = esp_mqtt_client_init(&mqtt_cfg);
-    // The last argument may be used to pass data to the event handler, in this example mqtt_event_handler 
-    esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt_event_handler, NULL);
-    esp_mqtt_client_start(client);
-}
-***/

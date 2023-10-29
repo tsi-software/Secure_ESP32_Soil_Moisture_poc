@@ -72,7 +72,7 @@ void app_main(void)
 
     app_wifi_station_init();
     app_sntp_sync_time();
-    app_mqtt50_start();
+    app_mqtt50_start(app_event_loop_handle);
 
     app_timer_init(app_event_loop_handle);
     app_read_touch_pads_init(app_event_loop_handle);
