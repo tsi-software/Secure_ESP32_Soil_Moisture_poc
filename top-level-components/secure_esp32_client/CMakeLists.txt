@@ -6,6 +6,5 @@ include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 project(secure-soil-moisture)
 
 target_add_binary_data(${CMAKE_PROJECT_NAME}.elf "main/mosq_ca.crt" TEXT)
-target_add_binary_data(${CMAKE_PROJECT_NAME}.elf "main/mosq_server.crt" TEXT)
 target_add_binary_data(${CMAKE_PROJECT_NAME}.elf "main/mosq_client.crt" TEXT)
 target_add_binary_data(${CMAKE_PROJECT_NAME}.elf "main/mosq_client.key" TEXT)

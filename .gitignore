@@ -38,6 +38,9 @@
 *.csr
 *.key
 
+# Other
+sample_*
+
 # sdkconfig may contain passwords.
 sdkconfig
 sdkconfig.*

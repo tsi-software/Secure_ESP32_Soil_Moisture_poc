@@ -7,4 +7,4 @@
 # please read the ESP-IDF documents if you need to do this.
 #
 
-COMPONENT_EMBED_TXTFILES := mosq_ca.crt mosq_server.crt mosq_client.crt mosq_client.key
+COMPONENT_EMBED_TXTFILES := mosq_ca.crt mosq_client.crt mosq_client.key
