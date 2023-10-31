@@ -6,6 +6,7 @@ app_touch_pads.h
 #define _APP_TOUCH_PADS_H_
 
 
+#include <time.h>
 #include "app_event_loop.h"
 
 
@@ -26,6 +27,7 @@ enum {
 
 
 typedef struct {
+    time_t utc_timestamp;
     uint16_t touch_value;
     uint8_t touch_pad_num;
 } app_touch_value_change_event_payload;

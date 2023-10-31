@@ -191,6 +191,12 @@ void app_sntp_sync_time(void)
 #endif
 
     char strftime_buf[64];
+    gmtime_r(&now, &timeinfo);
+    strftime(strftime_buf, sizeof(strftime_buf), "%c", &timeinfo);
+    ESP_LOGI(LOG_TAG, "The current UTC Unix Time is: %lld", now);
+    ESP_LOGI(LOG_TAG, "The current UTC date/time is: %s", strftime_buf);
+
+    //TODO: Remove the Time Zone setting and keep EVERYTHING as UTC on the device!!!
 
     // Set timezone to Eastern Standard Time and print local time
     setenv("TZ", "EST5EDT,M3.2.0/2,M11.1.0", 1);

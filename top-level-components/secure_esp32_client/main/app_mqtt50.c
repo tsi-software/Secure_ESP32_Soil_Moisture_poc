@@ -223,13 +223,16 @@ static void app_touch_value_handler(void* handler_args, esp_event_base_t base, i
     // MQTT Topic
     // soilmoisture/<device-id>/{analog,capacitive}/<sensor-id>
     // The Message is the sensor's numeric value formatted as a string.
+    // touch_pad_num is 8 bits  ... 2^8 = 256 (i.e. 3 characters)
+    // touch_value is 16 bits   ... 2^16 = 65536 (i.e. 5 characters)
+    // utc_timestamp is 64 bits ... 2^64 ~ 18,446,744,073,709,600,000 (i.e. 20 characters)
     int num_of_characters;
-    char topic[27 + 4 + 2]; //2^8 = 256 (i.e. 3 characters)
-    char data[6 + 2]; //2^16 = 65536 (i.e. 5 characters)
+    char topic[27 + 4 + 2];  // 2^8 needs 3 characters.
+    char data[6 + 2 + 20 + 2];  //2^16 = needs 5 characters and 2^64 needs 20 characters.
     //TODO: test 'num_of_characters' and handle error situation as necessary.
     //TODO: implement a meaningful <device-id>.
     num_of_characters = snprintf(topic, sizeof(topic), "/soilmoisture/1/capacitive/%u", payload->touch_pad_num);
-    num_of_characters = snprintf(data, sizeof(data), "%u", payload->touch_value);
+    num_of_characters = snprintf(data, sizeof(data), "%u, %lld", payload->touch_value, payload->utc_timestamp);
 
     // int esp_mqtt_client_enqueue(
     //     esp_mqtt_client_handle_t client,

@@ -44,6 +44,8 @@ static void app_timer_tick_handler(void* handler_args, esp_event_base_t base, in
     uint16_t touch_value;
     //uint16_t touch_filter_value;
 
+    //TODO: implement code here equivalent to touch_filter_callback(...)
+
     for (int i = 0; i < TOUCH_PAD_MAX; i++) {
         touch_pad_read(i, &touch_value);
         // filter mode...
@@ -58,6 +60,10 @@ static void app_timer_tick_handler(void* handler_args, esp_event_base_t base, in
 #ifdef TOUCH_FILTER_MODE_EN
 static void touch_filter_callback(uint16_t *raw_value, uint16_t *filtered_value)
 {
+    // It's important to grab the current time at the top of the callback function.
+    time_t now = 0;
+    time(&now);
+
     ESP_LOGV(LOG_TAG, "touch_filter_callback");
 
     // Just incase force_update is changed while we are processing below.
@@ -74,6 +80,7 @@ static void touch_filter_callback(uint16_t *raw_value, uint16_t *filtered_value)
             ESP_LOGD(LOG_TAG, "touch - [%d] %u (diff=%u)", ndx, new_value, diff);
 
             app_touch_value_change_event_payload payload = {
+                .utc_timestamp = now,
                 .touch_pad_num = ndx,
                 .touch_value = new_value
             };
