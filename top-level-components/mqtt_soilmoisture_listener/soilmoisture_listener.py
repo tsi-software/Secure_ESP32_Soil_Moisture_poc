@@ -11,6 +11,7 @@ import argparse
 import logging
 import os
 from pprint import pformat
+import ssl
 
 logger = logging.getLogger('soilmoisture_listener')
 
@@ -50,24 +51,38 @@ def get_config(args) -> dict[str, str | int]:
     config_dir: str = get_config_dir(args)
     cert_dir: str = get_cert_dir(args)
 
-    tls = {
-        'ca_certs': cert_dir + '/mosq_ca.crt',
-        'certfile': cert_dir + '/mosq_client.crt',
-        'keyfile': cert_dir + '/mosq_client.key',
-    }
+    tls_params = aiomqtt.TLSParameters(
+        ca_certs = cert_dir + '/mosq_ca.crt',
+        certfile = cert_dir + '/mosq_client.crt',
+        keyfile  = cert_dir + '/mosq_client.key',
+        cert_reqs = ssl.CERT_REQUIRED,
+        #tls_version = ssl.PROTOCOL_TLS,
+        #tls_version = ssl.PROTOCOL_TLS_CLIENT,
+        tls_version = ssl.PROTOCOL_TLSv1_2,
+        #ciphers = 'ALL',
+        #keyfile_password = None,
+    )
 
     return {
-        'hostname': '',
-        'port': 8333,
-        'tls': tls,
+        'hostname': 'raspberrypi',
+        'port': 8883,
+        'tls_params': tls_params,
     }
 
 
 
-async def listen():
+async def listen(args, config):
     """
     """
-
+    async with aiomqtt.Client(
+        hostname=config['hostname'],
+        port=config['port'],
+        tls_params=config['tls_params'],
+    ) as client:
+        async with client.messages() as messages:
+            await client.subscribe("#")
+            async for message in messages:
+                logger.info(message.payload)
 
 
 
@@ -77,7 +92,7 @@ async def start(args, config):
     logger.debug('start()')
 
     async with asyncio.TaskGroup() as task_group:
-        task_group.create_task(listen())
+        task_group.create_task(listen(args, config))
         #task_group.create_task(sleep(2)) # any other generic task...
 
 
