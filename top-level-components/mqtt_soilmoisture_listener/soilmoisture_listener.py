@@ -56,17 +56,16 @@ def get_config(args) -> dict[str, str | int]:
         certfile = cert_dir + '/mosq_client.crt',
         keyfile  = cert_dir + '/mosq_client.key',
         cert_reqs = ssl.CERT_REQUIRED,
-        #tls_version = ssl.PROTOCOL_TLS,
         #tls_version = ssl.PROTOCOL_TLS_CLIENT,
         tls_version = ssl.PROTOCOL_TLSv1_2,
-        #ciphers = 'ALL',
-        #keyfile_password = None,
     )
 
     return {
         'hostname': 'raspberrypi',
         'port': 8883,
         'tls_params': tls_params,
+        'protocol': aiomqtt.ProtocolVersion.V5,
+        #'protocol': aiomqtt.ProtocolVersion.V311,
     }
 
 
@@ -78,11 +77,16 @@ async def listen(args, config):
         hostname=config['hostname'],
         port=config['port'],
         tls_params=config['tls_params'],
+        protocol=config['protocol']
     ) as client:
         async with client.messages() as messages:
-            await client.subscribe("#")
+            await client.subscribe("/soilmoisture/#")
             async for message in messages:
-                logger.info(message.payload)
+                msg_str = '{}, {}'.format(
+                    message.topic.value,
+                    message.payload.decode('utf-8')
+                )
+                logger.debug(msg_str)
 
 
 
