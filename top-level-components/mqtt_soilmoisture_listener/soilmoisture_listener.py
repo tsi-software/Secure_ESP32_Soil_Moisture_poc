@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # soilmoisture_listener.py
-# Written with python 3.11 features.
+# Written for python 3.11
 #
 import asyncio
 import aiofiles
@@ -31,11 +31,12 @@ class SaveMqttMessages:
     def __init__(self, args):
         """
         args is the Command Line Arguments.
+        Default config values are defined in this function.
         """
         self.args = args
 
         self.config = configparser.ConfigParser()
-        self.config.read([DEFAULT_CONFIG_FILENAME, self.args.config])
+        self.config.read(self.args.config)
 
         # MQTT Connection Parameters:
         cert_dir: os.PathLike = Path(self.get_cert_dir())
@@ -51,8 +52,12 @@ class SaveMqttMessages:
         self.tls_params = tls_params
         self.protocol = aiomqtt.ProtocolVersion.V5
         #self.protocol = aiomqtt.ProtocolVersion.V311
+        self.mqtt_topic = self.config.get('MQTT Connection', 'topic', fallback='/soilmoisture/#')
 
         self.output_dir = Path(self.config.get('Output', 'output_dir', fallback='.'))
+        self.output_filename_prefix = self.config.get('Output', 'filename_prefix', fallback='soilmoisture_')
+        if '/' in self.output_filename_prefix:
+            raise Exception('Config Error: Output filename_prefix cannot contain a "/"')
 
 
     def __repr__(self) -> str:
@@ -61,7 +66,9 @@ class SaveMqttMessages:
             'port': self.port,
             'tls_params': self.tls_params,
             'protocol': self.protocol,
+            'mqtt_topic': self.mqtt_topic,
             'output_dir': pformat(self.output_dir),
+            'output_filename_prefix': self.output_filename_prefix,
         }
         return pformat(tmp)
 
@@ -93,7 +100,7 @@ class SaveMqttMessages:
         Return a filename based on the current date.
         """
         now = datetime.now()
-        filename = now.strftime("soilmoisture_%Y-%m-%d.csv")
+        filename = now.strftime(self.output_filename_prefix + "%Y-%m-%d.csv")
         #filename = 'soilmoisture_2023-11-10.csv'
         return self.output_dir / filename
 
