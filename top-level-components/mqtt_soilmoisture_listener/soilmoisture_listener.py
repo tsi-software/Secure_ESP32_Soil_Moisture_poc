@@ -6,6 +6,7 @@ import asyncio
 import aiofiles
 import aiomqtt
 import argparse
+import configparser
 from datetime import datetime
 import logging
 import os
@@ -17,6 +18,9 @@ from typing import TypeAlias
 logger = logging.getLogger('soilmoisture_listener')
 
 QueueType: TypeAlias = type(asyncio.Queue)
+
+DEFAULT_CONFIG_FILENAME = 'config.ini'
+
 
 
 #-------------------------------------------------------------------------------
@@ -30,43 +34,47 @@ class SaveMqttMessages:
         """
         self.args = args
 
-        config_dir: str = self.get_config_dir()
-        #TODO: read config file from config_dir.
+        self.config = configparser.ConfigParser()
+        self.config.read([DEFAULT_CONFIG_FILENAME, self.args.config])
 
         # MQTT Connection Parameters:
-        cert_dir: str = self.get_cert_dir()
+        cert_dir: os.PathLike = Path(self.get_cert_dir())
         tls_params = aiomqtt.TLSParameters(
-            ca_certs = cert_dir + '/mosq_ca.crt',
-            certfile = cert_dir + '/mosq_client.crt',
-            keyfile  = cert_dir + '/mosq_client.key',
+            ca_certs = cert_dir / 'mosq_ca.crt',
+            certfile = cert_dir / 'mosq_client.crt',
+            keyfile  = cert_dir / 'mosq_client.key',
             cert_reqs = ssl.CERT_REQUIRED,
-            #tls_version = ssl.PROTOCOL_TLS_CLIENT,
             tls_version = ssl.PROTOCOL_TLSv1_2,
         )
-
-        self.hostname = 'raspberrypi'
-        self.port = 8883
+        self.hostname = self.config.get('MQTT Connection', 'hostname')
+        self.port = self.config.getint('MQTT Connection', 'port', fallback=8883)
         self.tls_params = tls_params
         self.protocol = aiomqtt.ProtocolVersion.V5
         #self.protocol = aiomqtt.ProtocolVersion.V311
 
-        # TODO: improve output_dir
-        self.output_dir = Path('.')
+        self.output_dir = Path(self.config.get('Output', 'output_dir', fallback='.'))
 
 
-    def get_config_dir(self) -> str:
+    def __repr__(self) -> str:
+        tmp = {
+            'hostname': self.hostname,
+            'port': self.port,
+            'tls_params': self.tls_params,
+            'protocol': self.protocol,
+            'output_dir': pformat(self.output_dir),
+        }
+        return pformat(tmp)
+
+
+    def get_cert_dir(self) -> os.PathLike:
         """
-        TODO:...
         """
-        return '.'
+        # Check the config file for a certificate directory.
+        cert_dir = self.config.get('MQTT Connection', 'cert_dir', fallback='')
+        if cert_dir and os.path.isdir(cert_dir):
+            return cert_dir
 
-
-    def get_cert_dir(self) -> str:
-        """
-        """
-        if self.args.certdir and os.path.isdir(self.args.certdir):
-            return self.args.certdir
-
+        # And then try directories named 'private'.
         common_dirs = (
             './private',
             '../private',
@@ -80,7 +88,7 @@ class SaveMqttMessages:
         raise Exception('Certificate Directory NOT FOUND!')
 
 
-    def get_output_filename(self) -> str:
+    def get_output_filename(self) -> os.PathLike:
         """
         Return a filename based on the current date.
         """
@@ -167,7 +175,7 @@ class SaveMqttMessages:
     async def start(self):
         """
         """
-        logger.debug('start()')
+        logger.debug(f'start()\n{self}')
         mqtt_listen_queue: QueueType = asyncio.Queue()
 
         async with asyncio.TaskGroup() as task_group:
@@ -179,8 +187,8 @@ class SaveMqttMessages:
 #-------------------------------------------------------------------------------
 def commandLineArgs():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--certdir", help="Mosquitto security certificates directory.")
-    parser.add_argument("-d", "--debug", action="store_true", help="Run in debug mode.")
+    parser.add_argument("--config", default=DEFAULT_CONFIG_FILENAME,  help="Configuration filename.")
+    parser.add_argument("--debug", action="store_true", help="Run in debug mode.")
     return parser.parse_args()
 
 
