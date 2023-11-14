@@ -54,7 +54,7 @@ class SaveMqttMessages:
         #self.protocol = aiomqtt.ProtocolVersion.V311
         self.mqtt_topic = self.config.get('MQTT Connection', 'topic', fallback='/soilmoisture/#')
 
-        self.output_dir = Path(self.config.get('Output', 'output_dir', fallback='.'))
+        self.output_dir = Path(self.config.get('Output', 'output_dir', fallback='output_data'))
         self.output_filename_prefix = self.config.get('Output', 'filename_prefix', fallback='soilmoisture_')
         if '/' in self.output_filename_prefix:
             raise Exception('Config Error: Output filename_prefix cannot contain a "/"')
@@ -115,7 +115,7 @@ class SaveMqttMessages:
             protocol=self.protocol
         ) as client:
             async with client.messages() as messages:
-                await client.subscribe("/soilmoisture/#")
+                await client.subscribe(self.mqtt_topic)
                 async for message in messages:
                     msg_str = '{}, {}'.format(
                         message.topic.value,
