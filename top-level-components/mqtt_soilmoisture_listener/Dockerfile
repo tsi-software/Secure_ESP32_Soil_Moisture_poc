@@ -1,5 +1,5 @@
-#FROM python:3.11-slim
-FROM python:3.11
+FROM python:3.11-slim
+#FROM python:3.11
 RUN python3 -m pip install --upgrade pip
 
 COPY *.sh *.py *.ini *.txt   /soilmoisture_listener/

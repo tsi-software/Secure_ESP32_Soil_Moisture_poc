@@ -23,7 +23,6 @@ set -x
 
 docker build --rm --pull --tag ${DOCKER_TAG} .
 
-#TODO: --volume ... data
 docker run --rm --name ${CONTAINER_NAME} --detach \
   --volume "${SCRIPT_DIR}/../../private":/soilmoisture_listener/private \
   --volume "${SCRIPT_DIR}/../../private/config.ini":/soilmoisture_listener/config.ini \
@@ -33,3 +32,5 @@ docker run --rm --name ${CONTAINER_NAME} --detach \
 
 # To gain shell access:
 #docker exec -it soil /bin/bash
+#  or
+#docker exec -it soil /bin/sh
