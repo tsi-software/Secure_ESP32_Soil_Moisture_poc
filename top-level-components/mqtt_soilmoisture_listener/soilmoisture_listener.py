@@ -105,6 +105,16 @@ class SaveMqttMessages:
         return self.output_dir / filename
 
 
+    def get_output_header(self) -> str:
+        """
+        Return the header row of the output file.
+        This will be needed later when the csv file is processed.
+        For this later processing, it is important to NOT have spaces around the commas because
+          some systems take those spaces literally and use them in the data column name.
+        """
+        return 'sensor_id,sensor_value,utc_timestamp'
+
+
     async def listen_for_moisture_values(self, mqtt_listen_queue: QueueType):
         """
         """
@@ -140,8 +150,17 @@ class SaveMqttMessages:
                 # Get the output filename every time because the name is based on the current date.
                 # When the date changes the filename changes.
                 output_filename = self.get_output_filename()
+                output_filename_exists = output_filename.exists()
                 logger.debug(f'opening file: {output_filename}')
                 async with aiofiles.open(output_filename, mode='a', encoding='utf-8') as out_file:
+                    if not output_filename_exists:
+                        #-----------------------------------------------------------
+                        # The first row written must be the column header.
+                        # This will be needed later when the csv file is processed.
+                        #-----------------------------------------------------------
+                        await out_file.write(self.get_output_header() + "\n")
+                        output_filename_exists = True
+                    #
                     while True:
                         # Save the last value gotten.
                         await out_file.write(value_to_save + "\n")
