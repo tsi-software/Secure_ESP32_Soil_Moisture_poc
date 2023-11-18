@@ -232,7 +232,7 @@ static void app_touch_value_handler(void* handler_args, esp_event_base_t base, i
     //TODO: test 'num_of_characters' and handle error situation as necessary.
     //TODO: implement a meaningful <device-id>.
     num_of_characters = snprintf(topic, sizeof(topic), "/soilmoisture/1/capacitive/%u", payload->touch_pad_num);
-    num_of_characters = snprintf(data, sizeof(data), "%u, %lld", payload->touch_value, payload->utc_timestamp);
+    num_of_characters = snprintf(data, sizeof(data), "%u,%lld", payload->touch_value, payload->utc_timestamp);
 
     // int esp_mqtt_client_enqueue(
     //     esp_mqtt_client_handle_t client,

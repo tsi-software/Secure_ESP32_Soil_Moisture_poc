@@ -127,7 +127,7 @@ class SaveMqttMessages:
             async with client.messages() as messages:
                 await client.subscribe(self.mqtt_topic)
                 async for message in messages:
-                    msg_str = '{}, {}'.format(
+                    msg_str = '{},{}'.format(
                         message.topic.value,
                         message.payload.decode('utf-8')
                     )
