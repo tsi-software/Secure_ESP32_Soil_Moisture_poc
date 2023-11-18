@@ -212,8 +212,10 @@ class SaveMqttMessages:
 
 #-------------------------------------------------------------------------------
 def commandLineArgs():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--config", default=DEFAULT_CONFIG_FILENAME,  help="Configuration filename.")
+    parser = argparse.ArgumentParser(
+            description='Listen for, and save, MQTT messages with the Topic "/soilmoisture/#"'
+        )
+    parser.add_argument("--config", default=DEFAULT_CONFIG_FILENAME,  help="Configuration filename. (default: %(default)s)")
     parser.add_argument("--debug", action="store_true", help="Run in debug mode.")
     return parser.parse_args()
 
