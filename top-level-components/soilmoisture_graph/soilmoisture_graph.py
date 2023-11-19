@@ -10,13 +10,14 @@
 
 import argparse
 import configparser
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import logging
+import os
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from pathlib import Path
-#from pprint import pformat
+from pprint import pformat
 #from typing import TypeAlias
 
 logger = logging.getLogger('soilmoisture_graph')
@@ -31,16 +32,66 @@ def from_unix_epoch(unix_timestamp):
 
 
 
+def get_data_dir(args, config):
+    """
+    """
+    data_dirs = [
+        'output_data',
+        '../output_data',
+        '../../output_data',
+    ]
+
+    for test_dir in data_dirs:
+        if os.path.isdir(test_dir):
+            return test_dir
+
+    raise Exception('Sensor Data directory NOT FOUND!')
+
+
+
+def get_data_filenames(args, config):
+    """
+    """
+    now = datetime.now(timezone.utc)
+
+    sensor_data_dir = Path(get_data_dir(args, config))
+    filename_format = 'soilmoisture_{}.csv'
+
+    logger.debug('now: ' + now.strftime('%Y-%m-%d'))
+    logger.debug(f'{args.days=}')
+
+    # Add 1 to the 'number of days' in case that one day earlier happens to contain "spill-over" data.
+    # This also handles UTC data converted to another timezone.
+    sample_dates = [now-timedelta(days=day) for day in range(args.days+1)]
+    logger.debug('sample_dates:\n{}'.format(pformat(sample_dates)))
+
+    # e.g.
+    # sensor_data_filenames = [
+    #     sensor_data_dir / 'soilmoisture_2023-11-14.csv',
+    #     sensor_data_dir / 'soilmoisture_2023-11-15.csv',
+    # ]
+    sensor_data_filenames = []
+    for sample_date in sample_dates:
+        # e.g. sensor_data_dir / 'soilmoisture_2023-11-14.csv'
+        sample_file = sensor_data_dir / filename_format.format(sample_date.strftime('%Y-%m-%d'))
+        if sample_file.exists():
+            sensor_data_filenames.append(sample_file)
+    #
+    logger.info('sensor_data_filenames:\n{}'.format(pformat(sensor_data_filenames)))
+
+    return sensor_data_filenames
+
+
+
 def read_sensor_data(args, config):
     """
     """
-    sensor_data_dir = Path('~/github/tsi-software/Secure_ESP32_Soil_Moisture_poc/output_data')
-    #sensor_data_dir = Path('/mnt/max_github/tsi-software/Secure_ESP32_Soil_Moisture_poc/output_data')
-    sensor_data_filename = sensor_data_dir / 'soilmoisture_2023-11-14.csv'
-
-    sensor_data = pd.read_csv(sensor_data_filename)
-    sensor_data['utc_date'] = sensor_data['utc_timestamp'].apply(from_unix_epoch)
-    #sensor_data = sensor_data.drop(columns='utc_date')
+    dataframes = []
+    for filename in get_data_filenames(args, config):
+        sensor_data = pd.read_csv(filename)
+        sensor_data['utc_date'] = sensor_data['utc_timestamp'].apply(from_unix_epoch)
+        #sensor_data = sensor_data.drop(columns='utc_timestamp')
+        dataframes.append(sensor_data)
 
     # Column Names: sensor_id, sensor_value, utc_timestamp, utc_date
     # logger.debug(sensor_data.info())
@@ -57,7 +108,7 @@ def read_sensor_data(args, config):
     # For full list of useful options, see:
     # pd.describe_option('display')
 
-    return sensor_data
+    return pd.concat(dataframes, ignore_index=True)
 
 
 
