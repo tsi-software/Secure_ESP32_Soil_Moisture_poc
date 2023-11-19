@@ -7,7 +7,7 @@ import aiofiles
 import aiomqtt
 import argparse
 import configparser
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 import os
 from pathlib import Path
@@ -99,7 +99,7 @@ class SaveMqttMessages:
         """
         Return a filename based on the current date.
         """
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
         filename = now.strftime(self.output_filename_prefix + "%Y-%m-%d.csv")
         #filename = 'soilmoisture_2023-11-10.csv'
         return self.output_dir / filename
