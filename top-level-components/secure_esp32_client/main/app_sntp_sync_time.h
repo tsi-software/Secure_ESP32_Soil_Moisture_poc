@@ -6,7 +6,15 @@ app_sntp_sync_time.h
 #define _APP_SNTP_SYNC_TIME_
 
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 extern void app_sntp_sync_time(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 
 #endif // _APP_SNTP_SYNC_TIME_

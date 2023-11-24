@@ -8,7 +8,15 @@ app_mqtt50.h
 
 #include "app_event_loop.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 extern void app_mqtt50_start(esp_event_loop_handle_t event_loop);
+
+#ifdef __cplusplus
+}
+#endif
 
 
 #endif // _APP_MQTT_H_

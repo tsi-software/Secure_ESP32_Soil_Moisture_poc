@@ -34,7 +34,7 @@ static esp_event_loop_handle_t app_event_loop_handle;
 
 
 
-void app_main(void)
+extern "C" void app_main(void)
 {
     esp_err_t ret;
 
