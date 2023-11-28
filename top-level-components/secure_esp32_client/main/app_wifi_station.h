@@ -10,7 +10,7 @@ app_wifi_station.h
 extern "C" {
 #endif
 
-extern void app_wifi_station_init(void);
+extern void app_wifi_station_init(const char *wifi_ssid, const char *wifi_password);
 
 #ifdef __cplusplus
 }

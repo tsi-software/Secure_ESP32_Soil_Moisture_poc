@@ -20,6 +20,7 @@
 #include "esp_log.h"
 #include "nvs_flash.h"
 
+#include "app_config.hpp"
 #include "app_event_loop.h"
 #include "app_mqtt50.h"
 #include "app_sntp_sync_time.h"
@@ -58,7 +59,7 @@ extern "C" void app_main(void)
     esp_log_level_set("TRANSPORT", ESP_LOG_DEBUG);
     esp_log_level_set("OUTBOX", ESP_LOG_DEBUG);
 
-    //Initialize NVS
+    // Initialize NVS
     ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
       ESP_ERROR_CHECK(nvs_flash_erase());
@@ -70,10 +71,19 @@ extern "C" void app_main(void)
     ESP_ERROR_CHECK(esp_event_loop_create_default());
     ESP_ERROR_CHECK(create_app_event_loop(&app_event_loop_handle));
 
-    app_wifi_station_init();
-    app_sntp_sync_time();
-    app_mqtt50_start(app_event_loop_handle);
+    // To be more efficient with stack and memory use
+    // create separate scopes for configuration and initialization variables.
+    {
+        WifiConfig wifiConfig;
+        const char *wifi_ssid = wifiConfig.get_wifi_ssid();
+        const char *wifi_password = wifiConfig.get_wifi_password();
+        app_wifi_station_init(wifi_ssid, wifi_password);
+    }
+    {
+        app_sntp_sync_time();
+        app_mqtt50_start(app_event_loop_handle);
 
-    app_timer_init(app_event_loop_handle);
-    app_read_touch_pads_init(app_event_loop_handle);
+        app_timer_init(app_event_loop_handle);
+        app_read_touch_pads_init(app_event_loop_handle);
+    }
 }

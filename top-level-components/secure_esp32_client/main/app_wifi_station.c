@@ -92,7 +92,11 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base, int32_t e
 }
 
 
-void app_wifi_station_init(void)
+/**
+ * If wifi_ssid or wifi_password is NULL then use the value from menuconfig.
+ * 
+ */
+void app_wifi_station_init(const char *wifi_ssid, const char *wifi_password)
 {
     ESP_LOGI(LOG_TAG, "ESP_WIFI_MODE_STA");
 
@@ -137,6 +141,19 @@ void app_wifi_station_init(void)
             .sae_h2e_identifier = ESP_H2E_IDENTIFIER,
         },
     };
+    // If wifi_ssid is NULL then use the value from menuconfig.
+    if (wifi_ssid) {
+        strncpy((char *)wifi_config.sta.ssid, wifi_ssid, sizeof(wifi_config.sta.ssid));
+        wifi_config.sta.ssid[ sizeof(wifi_config.sta.ssid)-1 ] = '\0';
+    }
+    // If wifi_password is NULL then use the value from menuconfig.
+    if (wifi_password) {
+        strncpy((char *)wifi_config.sta.password, wifi_password, sizeof(wifi_config.sta.password));
+        wifi_config.sta.password[ sizeof(wifi_config.sta.password)-1 ] = '\0';
+    }
+
+    ESP_LOGI(LOG_TAG, "app_wifi_station_init() connecting to %s.", wifi_config.sta.ssid);
+
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA) );
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config) );
     ESP_ERROR_CHECK(esp_wifi_start() );
@@ -154,9 +171,9 @@ void app_wifi_station_init(void)
     /* xEventGroupWaitBits() returns the bits before the call returned, hence we can test which event actually
      * happened. */
     if (bits & WIFI_CONNECTED_BIT) {
-        ESP_LOGI(LOG_TAG, "connected to ap SSID:%s", WIFI_SSID);
+        ESP_LOGI(LOG_TAG, "connected to ap SSID:%s", wifi_config.sta.ssid);
     } else if (bits & WIFI_FAIL_BIT) {
-        ESP_LOGI(LOG_TAG, "Failed to connect to SSID:%s", WIFI_SSID);
+        ESP_LOGI(LOG_TAG, "Failed to connect to SSID:%s", wifi_config.sta.ssid);
     } else {
         ESP_LOGE(LOG_TAG, "UNEXPECTED EVENT");
     }
