@@ -2,8 +2,6 @@
 app_config.cpp
 */
 
-//#include "nvs_flash.h"
-//#include "nvs.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_log.h"
@@ -45,11 +43,11 @@ AppConfig::ConfigStr AppConfig::get_str(const char *key)
     err = nvs_handle->get_item_size(nvs::ItemType::SZ, key, required_size);
     if (err != ESP_OK) {
         if (err == ESP_ERR_NVS_NOT_FOUND) {
-            ESP_LOGW(LOG_TAG, "Warning (%s) - KEY NOT FOUND: '%s'",
-                     esp_err_to_name(err), key);
+            ESP_LOGW(LOG_TAG, "Warning (%s) - KEY NOT FOUND: '%s':'%s'",
+                     esp_err_to_name(err), nvs_namespace, key);
         } else {
-            ESP_LOGE(LOG_TAG, "Error (%s) - KEY: '%s'!",
-                     esp_err_to_name(err), key);
+            ESP_LOGE(LOG_TAG, "Error (%s) - KEY: '%s':''%s'!",
+                     esp_err_to_name(err), nvs_namespace, key);
         }
         return null_result;
     }
@@ -88,11 +86,11 @@ AppConfig::ConfigBlob AppConfig::get_blob(const char *key)
     err = nvs_handle->get_item_size(nvs::ItemType::BLOB_DATA, key, required_size);
     if (err != ESP_OK) {
         if (err == ESP_ERR_NVS_NOT_FOUND) {
-            ESP_LOGW(LOG_TAG, "Warning (%s) - KEY NOT FOUND: '%s'",
-                     esp_err_to_name(err), key);
+            ESP_LOGW(LOG_TAG, "Warning (%s) - KEY NOT FOUND: '%s':''%s'",
+                     esp_err_to_name(err), nvs_namespace, key);
         } else {
-            ESP_LOGE(LOG_TAG, "Error (%s) - KEY: '%s'!",
-                     esp_err_to_name(err), key);
+            ESP_LOGE(LOG_TAG, "Error (%s) - KEY: '%s':''%s'!",
+                     esp_err_to_name(err), nvs_namespace, key);
         }
         return null_result;
     }
@@ -138,9 +136,9 @@ const char *GlobalConfig::get_app_uuid()
 const char *WifiConfig::get_wifi_ssid()
 {
     if (!wifi_ssid) {
-        wifi_ssid = get_str("wifi_ssid");
+        wifi_ssid = get_str("ssid");
         if (wifi_ssid) {
-            ESP_LOGI(LOG_TAG, "wifi_ssid: '%s'", wifi_ssid.get());
+            ESP_LOGI(LOG_TAG, "ssid: '%s'", wifi_ssid.get());
         }
     }
     return wifi_ssid.get();
@@ -150,9 +148,9 @@ const char *WifiConfig::get_wifi_ssid()
 const char *WifiConfig::get_wifi_password()
 {
     if (!wifi_password) {
-        wifi_password = get_str("wifi_password");
+        wifi_password = get_str("password");
         if (wifi_password) {
-            ESP_LOGI(LOG_TAG, "wifi_password: *redacted*");
+            ESP_LOGI(LOG_TAG, "password: *redacted*");
         }
     }
     return wifi_password.get();

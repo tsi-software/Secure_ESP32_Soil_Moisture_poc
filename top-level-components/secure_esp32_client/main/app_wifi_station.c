@@ -141,12 +141,12 @@ void app_wifi_station_init(const char *wifi_ssid, const char *wifi_password)
             .sae_h2e_identifier = ESP_H2E_IDENTIFIER,
         },
     };
-    // If wifi_ssid is NULL then use the value from menuconfig.
+    // If wifi_ssid is NULL then use the value from menuconfig. See wifi_config initialization above.
     if (wifi_ssid) {
         strncpy((char *)wifi_config.sta.ssid, wifi_ssid, sizeof(wifi_config.sta.ssid));
         wifi_config.sta.ssid[ sizeof(wifi_config.sta.ssid)-1 ] = '\0';
     }
-    // If wifi_password is NULL then use the value from menuconfig.
+    // If wifi_password is NULL then use the value from menuconfig. See wifi_config initialization above.
     if (wifi_password) {
         strncpy((char *)wifi_config.sta.password, wifi_password, sizeof(wifi_config.sta.password));
         wifi_config.sta.password[ sizeof(wifi_config.sta.password)-1 ] = '\0';
@@ -178,20 +178,3 @@ void app_wifi_station_init(const char *wifi_ssid, const char *wifi_password)
         ESP_LOGE(LOG_TAG, "UNEXPECTED EVENT");
     }
 }
-
-
-/**
-void app_main(void)
-{
-    //Initialize NVS
-    esp_err_t ret = nvs_flash_init();
-    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
-      ESP_ERROR_CHECK(nvs_flash_erase());
-      ret = nvs_flash_init();
-    }
-    ESP_ERROR_CHECK(ret);
-
-    ESP_LOGI(LOG_TAG, "ESP_WIFI_MODE_STA");
-    app_wifi_station_init();
-}
-**/

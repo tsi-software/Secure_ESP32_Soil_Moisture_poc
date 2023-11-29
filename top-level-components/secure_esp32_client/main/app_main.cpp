@@ -72,7 +72,7 @@ extern "C" void app_main(void)
     ESP_ERROR_CHECK(create_app_event_loop(&app_event_loop_handle));
 
     // To be more efficient with stack and memory use
-    // create separate scopes for configuration and initialization variables.
+    //  create separate scopes for configuration and initialization variables.
     {
         WifiConfig wifiConfig;
         const char *wifi_ssid = wifiConfig.get_wifi_ssid();
