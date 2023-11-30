@@ -75,9 +75,9 @@ extern "C" void app_main(void)
     //  create separate scopes for configuration and initialization variables.
     {
         WifiConfig wifiConfig;
-        const char *wifi_ssid = wifiConfig.get_wifi_ssid();
-        const char *wifi_password = wifiConfig.get_wifi_password();
-        app_wifi_station_init(wifi_ssid, wifi_password);
+        const char *ssid = wifiConfig.get_ssid();
+        const char *password = wifiConfig.get_password();
+        app_wifi_station_init(ssid, password);
     }
     {
         app_sntp_sync_time();
