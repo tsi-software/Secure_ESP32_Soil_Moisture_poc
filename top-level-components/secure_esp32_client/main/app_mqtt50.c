@@ -15,12 +15,13 @@ app_mqtt50.c
 
 static const char *LOG_TAG = "app_mqtt";
 
-extern const uint8_t ca_cert_pem_start[] asm("_binary_mosq_ca_crt_start");
-extern const uint8_t ca_cert_pem_end[] asm("_binary_mosq_ca_crt_end");
-extern const uint8_t client_cert_pem_start[] asm("_binary_mosq_client_crt_start");
-extern const uint8_t client_cert_pem_end[] asm("_binary_mosq_client_crt_end");
-extern const uint8_t client_key_pem_start[] asm("_binary_mosq_client_key_start");
-extern const uint8_t client_key_pem_end[] asm("_binary_mosq_client_key_end");
+
+// extern const uint8_t ca_cert_pem_start[] asm("_binary_mosq_ca_crt_start");
+// extern const uint8_t ca_cert_pem_end[] asm("_binary_mosq_ca_crt_end");
+// extern const uint8_t client_cert_pem_start[] asm("_binary_mosq_client_crt_start");
+// extern const uint8_t client_cert_pem_end[] asm("_binary_mosq_client_crt_end");
+// extern const uint8_t client_key_pem_start[] asm("_binary_mosq_client_key_start");
+// extern const uint8_t client_key_pem_end[] asm("_binary_mosq_client_key_end");
 
 
 
@@ -248,8 +249,13 @@ static void app_touch_value_handler(void* handler_args, esp_event_base_t base, i
 
 
 
-void app_mqtt50_start(esp_event_loop_handle_t event_loop)
-{
+void app_mqtt50_start(
+        esp_event_loop_handle_t event_loop,
+        const char *broker_url,
+        const char *ca_cert,
+        const char *client_cert,
+        const char *client_key
+) {
     esp_mqtt5_connection_property_config_t connect_property = {
         .session_expiry_interval = 0, //10,  // seconds
         .maximum_packet_size = 1024,
@@ -266,12 +272,12 @@ void app_mqtt50_start(esp_event_loop_handle_t event_loop)
     };
 
     esp_mqtt_client_config_t mqtt_cfg = {
-        .broker.address.uri = CONFIG_MQTT_BROKER_URL,
-        .broker.verification.certificate = (const char *)ca_cert_pem_start,
+        .broker.address.uri = broker_url,
+        .broker.verification.certificate = ca_cert,
         .credentials = {
           .authentication = {
-            .certificate = (const char *)client_cert_pem_start,
-            .key = (const char *)client_key_pem_start,
+            .certificate = client_cert,
+            .key = client_key,
           },
         },
         .session.protocol_ver = MQTT_PROTOCOL_V_5,
@@ -283,6 +289,7 @@ void app_mqtt50_start(esp_event_loop_handle_t event_loop)
         //.network.disable_auto_reconnect = true,
     };
 
+    esp_err_t err;
     esp_mqtt_client_handle_t client = esp_mqtt_client_init(&mqtt_cfg);
 
     // Set connection properties and user properties 
@@ -297,7 +304,24 @@ void app_mqtt50_start(esp_event_loop_handle_t event_loop)
 
     // The last argument may be used to pass data to the event handler, in this example mqtt_event_handler 
     esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt5_event_handler, NULL);
-    esp_mqtt_client_start(client);
+    err = esp_mqtt_client_start(client);
+    switch(err) {
+    case ESP_OK:
+        ESP_LOGI(LOG_TAG, "Connecting to MQTT5 server '%s'.", mqtt_cfg.broker.address.uri);
+        break;
+    case ESP_ERR_INVALID_ARG:
+        ESP_LOGE(LOG_TAG, "MQTT5 Invalid Arg (%s) - Server '%s'!", esp_err_to_name(err), mqtt_cfg.broker.address.uri);
+        break;
+    case ESP_FAIL:
+    default:
+        ESP_LOGE(LOG_TAG, "MQTT5 Error (%s) - Server '%s'!", esp_err_to_name(err), mqtt_cfg.broker.address.uri);
+        break;
+    }
+
+
+    // WARNING: NOT FOR PRODUCTION!!  THIS LOG STATEMENT REVEALS SENSITIVE DATA!
+    //ESP_LOGW(LOG_TAG, "MQTT CONFIG:\n%s\n%s\n%s\n%s\n", broker_url, ca_cert, client_cert, client_key);
+
 
     // esp_err_t esp_event_handler_instance_register_with(
     //     esp_event_loop_handle_t event_loop,

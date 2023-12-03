@@ -12,7 +12,13 @@ app_mqtt50.h
 extern "C" {
 #endif
 
-extern void app_mqtt50_start(esp_event_loop_handle_t event_loop);
+extern void app_mqtt50_start(
+        esp_event_loop_handle_t event_loop,
+        const char *broker_url,
+        const char *ca_cert,
+        const char *client_cert,
+        const char *client_key
+);
 
 #ifdef __cplusplus
 }

@@ -10,7 +10,7 @@ app_sntp_sync_time.h
 extern "C" {
 #endif
 
-extern void app_sntp_sync_time(void);
+extern void app_sntp_sync_time(const char *sntp_server);
 
 #ifdef __cplusplus
 }

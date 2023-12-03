@@ -74,7 +74,7 @@ static void print_servers(void)
 
 
 
-static void obtain_time(void)
+static void obtain_time(const char *sntp_server)
 {
 #if LWIP_DHCP_GET_NTP_SRV
     /**
@@ -87,7 +87,7 @@ static void obtain_time(void)
      * otherwise NTP option would be rejected by default.
      */
     ESP_LOGI(LOG_TAG, "Initializing SNTP");
-    esp_sntp_config_t config = ESP_NETIF_SNTP_DEFAULT_CONFIG(CONFIG_SNTP_TIME_SERVER);
+    esp_sntp_config_t config = ESP_NETIF_SNTP_DEFAULT_CONFIG(sntp_server);
     config.start = false;                       // start SNTP service explicitly (after connecting)
     config.server_from_dhcp = true;             // accept NTP offers from DHCP server, if any (need to enable *before* connecting)
     config.renew_servers_after_new_IP = true;   // let esp-netif update configured SNTP server(s) after receiving DHCP lease
@@ -121,12 +121,12 @@ static void obtain_time(void)
     /* This demonstrates configuring more than one server
      */
     esp_sntp_config_t config = ESP_NETIF_SNTP_DEFAULT_CONFIG_MULTIPLE(2,
-                               ESP_SNTP_SERVER_LIST(CONFIG_SNTP_TIME_SERVER, "pool.ntp.org" ) );
+                               ESP_SNTP_SERVER_LIST(sntp_server, "pool.ntp.org" ) );
 # else
     /*
      * This is the basic default config with one server and starting the service
      */
-    esp_sntp_config_t config = ESP_NETIF_SNTP_DEFAULT_CONFIG(CONFIG_SNTP_TIME_SERVER);
+    esp_sntp_config_t config = ESP_NETIF_SNTP_DEFAULT_CONFIG(sntp_server);
 # endif
     config.sync_cb = time_sync_notification_cb;  // Note: This is only needed if we want
 
@@ -153,19 +153,25 @@ static void obtain_time(void)
 
 
 
-void app_sntp_sync_time(void)
+void app_sntp_sync_time(const char *sntp_server)
 {
+    time_t now;
+    time(&now);
+    struct tm timeinfo;
+    localtime_r(&now, &timeinfo);
+
     ++boot_count;
     ESP_LOGI(LOG_TAG, "Boot count: %d", boot_count);
 
-    time_t now;
-    struct tm timeinfo;
-    time(&now);
-    localtime_r(&now, &timeinfo);
+    // If sntp_server is NULL then use the value from menuconfig.
+    if (!sntp_server) {
+        sntp_server = CONFIG_SNTP_TIME_SERVER;
+    }
+
     // Is time set? If not, tm_year will be (1970 - 1900).
     if (timeinfo.tm_year < (2016 - 1900)) {
         ESP_LOGI(LOG_TAG, "Time is not set yet. Connecting to WiFi and getting time over NTP.");
-        obtain_time();
+        obtain_time(sntp_server);
         // update 'now' variable with current time
         time(&now);
     }
@@ -184,7 +190,7 @@ void app_sntp_sync_time(void)
         }
 
         ESP_LOGI(LOG_TAG, "Time was set, now just adjusting it. Use SMOOTH SYNC method.");
-        obtain_time();
+        obtain_time(sntp_server);
         // update 'now' variable with current time
         time(&now);
     }
