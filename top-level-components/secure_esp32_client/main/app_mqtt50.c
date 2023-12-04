@@ -101,6 +101,26 @@ static void log_error_if_nonzero(const char *message, int error_code)
 
 
 
+static void mqtt_startup_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data)
+{
+    ESP_LOGW(LOG_TAG, "mqtt_startup_handler: Event dispatched from event loop base=%s, event_id=%" PRIi32, base, event_id);
+
+    esp_err_t err;
+    globalTaskNotifyParams *startup_notify = (globalTaskNotifyParams *)handler_args;
+    esp_mqtt_event_handle_t event = event_data;
+
+    //TODO: test (esp_mqtt_event_id_t)event_id
+    //      MQTT_EVENT_CONNECTED or MQTT_EVENT_ERROR
+    xTaskNotifyGiveIndexed(startup_notify->taskToNotify, startup_notify->indexToNotify);
+
+    //(esp_mqtt_event_id_t)event_id
+    err = esp_mqtt_client_unregister_event(event->client, ESP_EVENT_ANY_ID, mqtt_startup_handler);
+    if (err != ESP_OK) {
+        ESP_LOGE(LOG_TAG, "esp_mqtt_client_unregister_event(...,mqtt_startup_handler): %s!", esp_err_to_name(err));
+    }
+}
+
+
 /*
  * @brief Event handler registered to receive MQTT events
  *
@@ -114,45 +134,16 @@ static void log_error_if_nonzero(const char *message, int error_code)
 static void mqtt5_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data)
 {
     ESP_LOGD(LOG_TAG, "Event dispatched from event loop base=%s, event_id=%" PRIi32, base, event_id);
-    esp_mqtt_event_handle_t event = event_data;
-    // esp_mqtt_client_handle_t client = event->client;
-    // int msg_id;
+    ESP_LOGD(LOG_TAG, "free heap size is %" PRIu32 ", minimum %" PRIu32,
+             esp_get_free_heap_size(),
+             esp_get_minimum_free_heap_size()
+    );
 
-    ESP_LOGD(LOG_TAG, "free heap size is %" PRIu32 ", minimum %" PRIu32, esp_get_free_heap_size(), esp_get_minimum_free_heap_size());
+    esp_mqtt_event_handle_t event = event_data;
+
     switch ((esp_mqtt_event_id_t)event_id) {
     case MQTT_EVENT_CONNECTED:
         ESP_LOGI(LOG_TAG, "MQTT_EVENT_CONNECTED");
-
-        /***
-        print_user_property(event->property->user_property);
-        esp_mqtt5_client_set_user_property(&publish_property.user_property, user_property_arr, USE_PROPERTY_ARR_SIZE);
-        esp_mqtt5_client_set_publish_property(client, &publish_property);
-        msg_id = esp_mqtt_client_publish(client, "/topic/qos1", "data_3", 0, 1, 1);
-        esp_mqtt5_client_delete_user_property(publish_property.user_property);
-        publish_property.user_property = NULL;
-        ESP_LOGI(LOG_TAG, "sent publish successful, msg_id=%d", msg_id);
-
-        esp_mqtt5_client_set_user_property(&subscribe_property.user_property, user_property_arr, USE_PROPERTY_ARR_SIZE);
-        esp_mqtt5_client_set_subscribe_property(client, &subscribe_property);
-        msg_id = esp_mqtt_client_subscribe(client, "/topic/qos0", 0);
-        esp_mqtt5_client_delete_user_property(subscribe_property.user_property);
-        subscribe_property.user_property = NULL;
-        ESP_LOGI(LOG_TAG, "sent subscribe successful, msg_id=%d", msg_id);
-
-        esp_mqtt5_client_set_user_property(&subscribe1_property.user_property, user_property_arr, USE_PROPERTY_ARR_SIZE);
-        esp_mqtt5_client_set_subscribe_property(client, &subscribe1_property);
-        msg_id = esp_mqtt_client_subscribe(client, "/topic/qos1", 2);
-        esp_mqtt5_client_delete_user_property(subscribe1_property.user_property);
-        subscribe1_property.user_property = NULL;
-        ESP_LOGI(LOG_TAG, "sent subscribe successful, msg_id=%d", msg_id);
-
-        esp_mqtt5_client_set_user_property(&unsubscribe_property.user_property, user_property_arr, USE_PROPERTY_ARR_SIZE);
-        esp_mqtt5_client_set_unsubscribe_property(client, &unsubscribe_property);
-        msg_id = esp_mqtt_client_unsubscribe(client, "/topic/qos0");
-        ESP_LOGI(LOG_TAG, "sent unsubscribe successful, msg_id=%d", msg_id);
-        esp_mqtt5_client_delete_user_property(unsubscribe_property.user_property);
-        unsubscribe_property.user_property = NULL;
-        ***/
         break;
 
     case MQTT_EVENT_DISCONNECTED:
@@ -161,21 +152,11 @@ static void mqtt5_event_handler(void *handler_args, esp_event_base_t base, int32
         break;
 
     case MQTT_EVENT_SUBSCRIBED:
-        ESP_LOGI(LOG_TAG, "MQTT_EVENT_SUBSCRIBED, msg_id=%d", event->msg_id);
-        // print_user_property(event->property->user_property);
-        // esp_mqtt5_client_set_publish_property(client, &publish_property);
-        // msg_id = esp_mqtt_client_publish(client, "/topic/qos0", "data", 0, 0, 0);
-        // ESP_LOGI(LOG_TAG, "sent publish successful, msg_id=%d", msg_id);
+        ESP_LOGD(LOG_TAG, "MQTT_EVENT_SUBSCRIBED, msg_id=%d", event->msg_id);
         break;
 
     case MQTT_EVENT_UNSUBSCRIBED:
-        ESP_LOGI(LOG_TAG, "MQTT_EVENT_UNSUBSCRIBED, msg_id=%d", event->msg_id);
-        // print_user_property(event->property->user_property);
-        // esp_mqtt5_client_set_user_property(&disconnect_property.user_property, user_property_arr, USE_PROPERTY_ARR_SIZE);
-        // esp_mqtt5_client_set_disconnect_property(client, &disconnect_property);
-        // esp_mqtt5_client_delete_user_property(disconnect_property.user_property);
-        // disconnect_property.user_property = NULL;
-        // esp_mqtt_client_disconnect(client);
+        ESP_LOGD(LOG_TAG, "MQTT_EVENT_UNSUBSCRIBED, msg_id=%d", event->msg_id);
         break;
 
     case MQTT_EVENT_PUBLISHED:
@@ -195,9 +176,9 @@ static void mqtt5_event_handler(void *handler_args, esp_event_base_t base, int32
         break;
 
     case MQTT_EVENT_ERROR:
-        ESP_LOGI(LOG_TAG, "MQTT_EVENT_ERROR");
+        ESP_LOGW(LOG_TAG, "MQTT_EVENT_ERROR");
         //print_user_property(event->property->user_property);
-        ESP_LOGI(LOG_TAG, "MQTT5 return code is %d", event->error_handle->connect_return_code);
+        ESP_LOGW(LOG_TAG, "MQTT5 return code is %d", event->error_handle->connect_return_code);
         if (event->error_handle->error_type == MQTT_ERROR_TYPE_TCP_TRANSPORT) {
             log_error_if_nonzero("reported from esp-tls", event->error_handle->esp_tls_last_esp_err);
             log_error_if_nonzero("reported from tls stack", event->error_handle->esp_tls_stack_err);
@@ -249,7 +230,13 @@ static void app_touch_value_handler(void* handler_args, esp_event_base_t base, i
 
 
 
+/*
+  Important:
+    the memory allocated to 'startup_notify' must not be released immediately
+    because it may be referred to at any time in other tasks.
+*/
 void app_mqtt50_start(
+        globalTaskNotifyParams *startup_notify,
         esp_event_loop_handle_t event_loop,
         const char *broker_url,
         const char *ca_cert,
@@ -303,8 +290,21 @@ void app_mqtt50_start(
     ////esp_mqtt5_client_delete_user_property(connect_property.will_user_property);
 
     // The last argument may be used to pass data to the event handler, in this example mqtt_event_handler 
-    esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt5_event_handler, NULL);
+    err = esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt_startup_handler, startup_notify);
+    if (err != ESP_OK) {
+        ESP_LOGE(LOG_TAG, "esp_mqtt_client_register_event(...,mqtt_startup_handler): %s!", esp_err_to_name(err));
+    }
+    err = esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt5_event_handler, NULL);
+    if (err != ESP_OK) {
+        ESP_LOGE(LOG_TAG, "esp_mqtt_client_register_event(...,mqtt5_event_handler): %s!", esp_err_to_name(err));
+    }
+
     err = esp_mqtt_client_start(client);
+
+
+    //TODO: on error call:  xTaskNotifyGiveIndexed(startup_notify->taskToNotify, startup_notify->indexToNotify);
+
+
     switch(err) {
     case ESP_OK:
         ESP_LOGI(LOG_TAG, "Connecting to MQTT5 server '%s'.", mqtt_cfg.broker.address.uri);
@@ -317,11 +317,6 @@ void app_mqtt50_start(
         ESP_LOGE(LOG_TAG, "MQTT5 Error (%s) - Server '%s'!", esp_err_to_name(err), mqtt_cfg.broker.address.uri);
         break;
     }
-
-
-    // WARNING: NOT FOR PRODUCTION!!  THIS LOG STATEMENT REVEALS SENSITIVE DATA!
-    //ESP_LOGW(LOG_TAG, "MQTT CONFIG:\n%s\n%s\n%s\n%s\n", broker_url, ca_cert, client_cert, client_key);
-
 
     // esp_err_t esp_event_handler_instance_register_with(
     //     esp_event_loop_handle_t event_loop,

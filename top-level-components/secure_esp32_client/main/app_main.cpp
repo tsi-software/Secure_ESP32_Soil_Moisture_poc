@@ -27,13 +27,22 @@
 #include "app_timer.h"
 #include "app_touch_pads.h"
 #include "app_wifi_station.h"
+#include "app_globals.h"
 
 
-static const char *LOG_TAG = "Secure_Soil_Moisture";
+static const char *LOG_TAG = "app_main";
 
 static esp_event_loop_handle_t app_event_loop_handle;
+static globalTaskNotifyParams mqtt_startup_notify;
+#define MQTT_INDEX_TO_NOTIFY 1
+// TODO: throw a compile time error if CONFIG_FREERTOS_TASK_NOTIFICATION_ARRAY_ENTRIES is less than 2 in "sdkconfig"
+// see
+//   https://www.freertos.org/a00110.html#configUSE_TASK_NOTIFICATIONS
+//   https://www.freertos.org/xTaskNotifyGive.html
+//   https://www.freertos.org/ulTaskNotifyTake.html
 
 
+/*
 //------------------------------------------------------------------------------
 // JUST TESTING!
 // Forward Declarations.
@@ -46,7 +55,7 @@ struct TestTaskParams {
 };
 TestTaskParams testTaskParams1, testTaskParams2;
 //------------------------------------------------------------------------------
-
+*/
 
 
 extern "C" void app_main(void)
@@ -100,14 +109,9 @@ extern "C" void app_main(void)
     }
 
 
+    /****
     // JUST TESTING!
     UBaseType_t currentPriority = uxTaskPriorityGet(xTaskGetCurrentTaskHandle());
-
-    // TODO: throw a compile time error if CONFIG_FREERTOS_TASK_NOTIFICATION_ARRAY_ENTRIES is less than 3 in "sdkconfig"
-    // see
-    //   https://www.freertos.org/a00110.html#configUSE_TASK_NOTIFICATIONS
-    //   https://www.freertos.org/xTaskNotifyGive.html
-    //   https://www.freertos.org/ulTaskNotifyTake.html
 
     TaskHandle_t xTaskHandle1 = NULL;
     testTaskParams1.xParentHandle = xTaskGetCurrentTaskHandle();
@@ -131,13 +135,18 @@ extern "C" void app_main(void)
     // ESP_LOGE(LOG_TAG, "WAITING for testTask2.");
     // ulTaskNotifyTakeIndexed(testTaskParams2.xNotificationIndex, pdTRUE, (TickType_t)0xffff);
     // ESP_LOGE(LOG_TAG, "testTask2 DONE WAITING.");
+    ****/
 
 
-    MqttConfig mqttConfig; //JUST TESTING.
+    // The memory held by 'mqttConfig' is needed for the start-up of the task that runs the mqtt client code
+    // and must not go out-of-soope too soon.
+    MqttConfig mqttConfig;
     {
-        //JUST TESTING.
-        //MqttConfig mqttConfig;
+        mqtt_startup_notify.taskToNotify = xTaskGetCurrentTaskHandle();
+        mqtt_startup_notify.indexToNotify = MQTT_INDEX_TO_NOTIFY;
+
         app_mqtt50_start(
+                &mqtt_startup_notify,
                 app_event_loop_handle,
                 mqttConfig.get_broker_url(),
                 mqttConfig.get_ca_cert(),
@@ -147,18 +156,27 @@ extern "C" void app_main(void)
     }
 
 
-    ESP_LOGE(LOG_TAG, "Creating testTask2.");
-    createErr = xTaskCreate(testTask2, "testTask2", 4096, &testTaskParams2, currentPriority, &xTaskHandle2);
-    ESP_LOGE(LOG_TAG, "WAITING for testTask2.");
-    ulTaskNotifyTakeIndexed(testTaskParams2.xNotificationIndex, pdTRUE, (TickType_t)0xffff);
-    ESP_LOGE(LOG_TAG, "testTask2 DONE WAITING.");
+    // ESP_LOGE(LOG_TAG, "Creating testTask2.");
+    // createErr = xTaskCreate(testTask2, "testTask2", 4096, &testTaskParams2, currentPriority, &xTaskHandle2);
+    // ESP_LOGE(LOG_TAG, "WAITING for testTask2.");
+    // ulTaskNotifyTakeIndexed(testTaskParams2.xNotificationIndex, pdTRUE, (TickType_t)0xffff);
+    // ESP_LOGE(LOG_TAG, "testTask2 DONE WAITING.");
+
 
     app_timer_init(app_event_loop_handle);
     app_read_touch_pads_init(app_event_loop_handle);
+
+    // Block waiting until the MQTT client has "started".
+    // This in mainly needed to prevent 'mqttConfig' from going out of scope and its memory released.
+    // The memory held by 'mqttConfig' is needed for the start-up of the task that runs the mqtt client code.
+    ESP_LOGI(LOG_TAG, "Waiting for the mqtt client start up...");
+    ulTaskNotifyTakeIndexed(mqtt_startup_notify.indexToNotify, pdTRUE, (TickType_t)0xffff);
+    ESP_LOGI(LOG_TAG, "Done waiting for the mqtt client start up.");
 }
 
 
 
+/****
 static void testTask1(void *pvParameters)
 {
     TestTaskParams *params = (TestTaskParams *)pvParameters;
@@ -188,3 +206,4 @@ static void testTask2(void *pvParameters)
 
     vTaskDelete( NULL );
 }
+****/
