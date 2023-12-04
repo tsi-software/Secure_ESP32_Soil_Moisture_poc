@@ -42,21 +42,6 @@ static globalTaskNotifyParams mqtt_startup_notify;
 //   https://www.freertos.org/ulTaskNotifyTake.html
 
 
-/*
-//------------------------------------------------------------------------------
-// JUST TESTING!
-// Forward Declarations.
-static void testTask1(void *pvParameters);
-static void testTask2(void *pvParameters);
-
-struct TestTaskParams {
-    TaskHandle_t xParentHandle;
-    UBaseType_t xNotificationIndex;
-};
-TestTaskParams testTaskParams1, testTaskParams2;
-//------------------------------------------------------------------------------
-*/
-
 
 extern "C" void app_main(void)
 {
@@ -108,38 +93,8 @@ extern "C" void app_main(void)
         app_sntp_sync_time( globalConfig.get_sntp_server() );
     }
 
-
-    /****
-    // JUST TESTING!
-    UBaseType_t currentPriority = uxTaskPriorityGet(xTaskGetCurrentTaskHandle());
-
-    TaskHandle_t xTaskHandle1 = NULL;
-    testTaskParams1.xParentHandle = xTaskGetCurrentTaskHandle();
-    testTaskParams1.xNotificationIndex = 1;
-
-    TaskHandle_t xTaskHandle2 = NULL;
-    testTaskParams2.xParentHandle = xTaskGetCurrentTaskHandle();
-    testTaskParams2.xNotificationIndex = 2;
-
-    BaseType_t createErr;
-    ESP_LOGE(LOG_TAG, "Creating testTask1.");
-    createErr = xTaskCreate(testTask1, "testTask1", 4096, &testTaskParams1, currentPriority, &xTaskHandle1);
-
-    ESP_LOGE(LOG_TAG, "Main Task - waiting for 5 seconds.");
-    vTaskDelay(5000/portTICK_PERIOD_MS);
-
-    ESP_LOGE(LOG_TAG, "WAITING for testTask1.");
-    ulTaskNotifyTakeIndexed(testTaskParams1.xNotificationIndex, pdTRUE, (TickType_t)0xffff);
-    ESP_LOGE(LOG_TAG, "testTask1 DONE WAITING.");
-
-    // ESP_LOGE(LOG_TAG, "WAITING for testTask2.");
-    // ulTaskNotifyTakeIndexed(testTaskParams2.xNotificationIndex, pdTRUE, (TickType_t)0xffff);
-    // ESP_LOGE(LOG_TAG, "testTask2 DONE WAITING.");
-    ****/
-
-
     // The memory held by 'mqttConfig' is needed for the start-up of the task that runs the mqtt client code
-    // and must not go out-of-soope too soon.
+    // and must not go out-of-soope too soon. See 'ulTaskNotifyTakeIndexed(...)' below.
     MqttConfig mqttConfig;
     {
         mqtt_startup_notify.taskToNotify = xTaskGetCurrentTaskHandle();
@@ -155,55 +110,13 @@ extern "C" void app_main(void)
         );
     }
 
-
-    // ESP_LOGE(LOG_TAG, "Creating testTask2.");
-    // createErr = xTaskCreate(testTask2, "testTask2", 4096, &testTaskParams2, currentPriority, &xTaskHandle2);
-    // ESP_LOGE(LOG_TAG, "WAITING for testTask2.");
-    // ulTaskNotifyTakeIndexed(testTaskParams2.xNotificationIndex, pdTRUE, (TickType_t)0xffff);
-    // ESP_LOGE(LOG_TAG, "testTask2 DONE WAITING.");
-
-
     app_timer_init(app_event_loop_handle);
     app_read_touch_pads_init(app_event_loop_handle);
 
-    // Block waiting until the MQTT client has "started".
+    // Block until the MQTT client has "started".
     // This in mainly needed to prevent 'mqttConfig' from going out of scope and its memory released.
-    // The memory held by 'mqttConfig' is needed for the start-up of the task that runs the mqtt client code.
-    ESP_LOGI(LOG_TAG, "Waiting for the mqtt client start up...");
+    // The memory held by 'mqttConfig' is needed for the start-up of the other task that runs the mqtt client code.
+    ESP_LOGW(LOG_TAG, "Waiting for the mqtt client start up...");
     ulTaskNotifyTakeIndexed(mqtt_startup_notify.indexToNotify, pdTRUE, (TickType_t)0xffff);
-    ESP_LOGI(LOG_TAG, "Done waiting for the mqtt client start up.");
+    ESP_LOGW(LOG_TAG, "Done waiting for the mqtt client start up.");
 }
-
-
-
-/****
-static void testTask1(void *pvParameters)
-{
-    TestTaskParams *params = (TestTaskParams *)pvParameters;
-
-    ESP_LOGE(LOG_TAG, "testTask1 - about to GIVE.");
-    //BaseType_t xTaskNotifyGiveIndexed( TaskHandle_t xTaskToNotify, UBaseType_t uxIndexToNotify );
-    xTaskNotifyGiveIndexed(params->xParentHandle, params->xNotificationIndex);
-    ESP_LOGE(LOG_TAG, "testTask1 - GAVE.");
-
-    vTaskDelete( NULL );
-}
-
-
-
-static void testTask2(void *pvParameters)
-{
-    TestTaskParams *params = (TestTaskParams *)pvParameters;
-
-    ESP_LOGE(LOG_TAG, "testTask2 - waiting for 5 seconds.");
-    const TickType_t xDelay = 5000 / portTICK_PERIOD_MS;
-    vTaskDelay(xDelay);
-
-    ESP_LOGE(LOG_TAG, "testTask2 - about to GIVE.");
-    //BaseType_t xTaskNotifyGiveIndexed( TaskHandle_t xTaskToNotify, UBaseType_t uxIndexToNotify );
-    xTaskNotifyGiveIndexed(params->xParentHandle, params->xNotificationIndex);
-    ESP_LOGE(LOG_TAG, "testTask2 - GAVE.");
-
-    vTaskDelete( NULL );
-}
-****/

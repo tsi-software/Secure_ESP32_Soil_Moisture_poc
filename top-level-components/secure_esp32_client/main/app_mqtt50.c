@@ -16,14 +16,6 @@ app_mqtt50.c
 static const char *LOG_TAG = "app_mqtt";
 
 
-// extern const uint8_t ca_cert_pem_start[] asm("_binary_mosq_ca_crt_start");
-// extern const uint8_t ca_cert_pem_end[] asm("_binary_mosq_ca_crt_end");
-// extern const uint8_t client_cert_pem_start[] asm("_binary_mosq_client_crt_start");
-// extern const uint8_t client_cert_pem_end[] asm("_binary_mosq_client_crt_end");
-// extern const uint8_t client_key_pem_start[] asm("_binary_mosq_client_key_start");
-// extern const uint8_t client_key_pem_end[] asm("_binary_mosq_client_key_end");
-
-
 
 // static esp_mqtt5_user_property_item_t user_property_arr[] = {
 //         {"board", "esp32"},
@@ -103,21 +95,27 @@ static void log_error_if_nonzero(const char *message, int error_code)
 
 static void mqtt_startup_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data)
 {
-    ESP_LOGW(LOG_TAG, "mqtt_startup_handler: Event dispatched from event loop base=%s, event_id=%" PRIi32, base, event_id);
+    ESP_LOGD(LOG_TAG, "mqtt_startup_handler: Event dispatched from event loop base=%s, event_id=%" PRIi32, base, event_id);
 
+    if (!( (esp_mqtt_event_id_t)event_id==MQTT_EVENT_CONNECTED || (esp_mqtt_event_id_t)event_id==MQTT_EVENT_ERROR )) {
+        // We are only interested in the Connected or Error events here.
+        return;
+    }
+
+    // The only purpose of mqtt_startup_handler is to Notify the main thread that this task
+    //  has either successfully started or errored out.
+    // In either case, after this point, this handler is no longer needed.
     esp_err_t err;
-    globalTaskNotifyParams *startup_notify = (globalTaskNotifyParams *)handler_args;
     esp_mqtt_event_handle_t event = event_data;
-
-    //TODO: test (esp_mqtt_event_id_t)event_id
-    //      MQTT_EVENT_CONNECTED or MQTT_EVENT_ERROR
-    xTaskNotifyGiveIndexed(startup_notify->taskToNotify, startup_notify->indexToNotify);
-
-    //(esp_mqtt_event_id_t)event_id
     err = esp_mqtt_client_unregister_event(event->client, ESP_EVENT_ANY_ID, mqtt_startup_handler);
     if (err != ESP_OK) {
         ESP_LOGE(LOG_TAG, "esp_mqtt_client_unregister_event(...,mqtt_startup_handler): %s!", esp_err_to_name(err));
     }
+
+    globalTaskNotifyParams *startup_notify = (globalTaskNotifyParams *)handler_args;
+
+    // Notify the main task that this task will no longer be accessing the memory allocated to the config info.
+    xTaskNotifyGiveIndexed(startup_notify->taskToNotify, startup_notify->indexToNotify);
 }
 
 
@@ -142,6 +140,10 @@ static void mqtt5_event_handler(void *handler_args, esp_event_base_t base, int32
     esp_mqtt_event_handle_t event = event_data;
 
     switch ((esp_mqtt_event_id_t)event_id) {
+    case MQTT_EVENT_BEFORE_CONNECT:
+        ESP_LOGD(LOG_TAG, "MQTT_EVENT_BEFORE_CONNECT");
+        break;
+
     case MQTT_EVENT_CONNECTED:
         ESP_LOGI(LOG_TAG, "MQTT_EVENT_CONNECTED");
         break;
@@ -196,11 +198,11 @@ static void mqtt5_event_handler(void *handler_args, esp_event_base_t base, int32
 
 static void app_touch_value_handler(void* handler_args, esp_event_base_t base, int32_t id, void* event_data)
 {
-    app_touch_value_change_event_payload *payload = event_data;
     // typedef struct {
     //     uint16_t touch_value;
     //     uint8_t touch_pad_num;
     // } app_touch_value_change_event_payload;
+    app_touch_value_change_event_payload *payload = event_data;
 
     // MQTT Topic
     // soilmoisture/<device-id>/{analog,capacitive}/<sensor-id>
@@ -216,16 +218,25 @@ static void app_touch_value_handler(void* handler_args, esp_event_base_t base, i
     num_of_characters = snprintf(topic, sizeof(topic), "/soilmoisture/1/capacitive/%u", payload->touch_pad_num);
     num_of_characters = snprintf(data, sizeof(data), "%u,%lld", payload->touch_value, payload->utc_timestamp);
 
+    // https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/protocols/mqtt.html#_CPPv416esp_mqtt_event_t
     // int esp_mqtt_client_enqueue(
     //     esp_mqtt_client_handle_t client,
     //     const char *topic,
     //     const char *data, int len,
     //     int qos, int retain, bool store
     // )
+    // Returns message_id if queued successfully, -1 on failure, -2 in case of full outbox.
     esp_mqtt_client_handle_t mqtt_client = handler_args;
-    esp_mqtt_client_enqueue(mqtt_client, topic, data,0, 0,0,true);
-
-    ESP_LOGI(LOG_TAG, "MQTT ENQUEUED: %s, %s", topic, data);
+    int msg_id = esp_mqtt_client_enqueue(mqtt_client, topic, data,0, 0,0,true);
+    if (msg_id == -1) {
+        // Failure.
+        ESP_LOGE(LOG_TAG, "FAILURE: esp_mqtt_client_enqueue(): %s, %s", topic, data);
+    } else if (msg_id == -2) {
+        // Outbox Full.
+        ESP_LOGE(LOG_TAG, "OUTBOX FULL: esp_mqtt_client_enqueue(): %s, %s", topic, data);
+    } else {
+        ESP_LOGD(LOG_TAG, "MQTT ENQUEUED: msg_id:%d, %s, %s", msg_id, topic, data);
+    }
 }
 
 
@@ -289,21 +300,37 @@ void app_mqtt50_start(
     ////esp_mqtt5_client_delete_user_property(connect_property.user_property);
     ////esp_mqtt5_client_delete_user_property(connect_property.will_user_property);
 
-    // The last argument may be used to pass data to the event handler, in this example mqtt_event_handler 
+    // The mqtt_startup_handler is used to Notify the main thread that the mqtt task
+    //  has either successfully started or errored out and that this task will no longer
+    //  be accessing the memory allocated to the config arguments pass in to this function.
     err = esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt_startup_handler, startup_notify);
     if (err != ESP_OK) {
         ESP_LOGE(LOG_TAG, "esp_mqtt_client_register_event(...,mqtt_startup_handler): %s!", esp_err_to_name(err));
     }
+
+    // The mqtt5_event_handler is used for general MQTT events.
     err = esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt5_event_handler, NULL);
     if (err != ESP_OK) {
         ESP_LOGE(LOG_TAG, "esp_mqtt_client_register_event(...,mqtt5_event_handler): %s!", esp_err_to_name(err));
     }
 
     err = esp_mqtt_client_start(client);
+    if (err != ESP_OK) {
+        // MQTT Client failed to start!
+        esp_err_t err2;
+        err2 = esp_mqtt_client_unregister_event(client, ESP_EVENT_ANY_ID, mqtt_startup_handler);
+        if (err2 != ESP_OK) {
+            ESP_LOGE(LOG_TAG, "esp_mqtt_client_unregister_event(...,mqtt_startup_handler): %s!", esp_err_to_name(err2));
+        }
 
+        err2 = esp_mqtt_client_unregister_event(client, ESP_EVENT_ANY_ID, mqtt5_event_handler);
+        if (err2 != ESP_OK) {
+            ESP_LOGE(LOG_TAG, "esp_mqtt_client_unregister_event(...,mqtt5_event_handler): %s!", esp_err_to_name(err2));
+        }
 
-    //TODO: on error call:  xTaskNotifyGiveIndexed(startup_notify->taskToNotify, startup_notify->indexToNotify);
-
+        // Notify the main task that this task will no longer be accessing the memory allocated to the config arguments.
+        xTaskNotifyGiveIndexed(startup_notify->taskToNotify, startup_notify->indexToNotify);
+    }
 
     switch(err) {
     case ESP_OK:
