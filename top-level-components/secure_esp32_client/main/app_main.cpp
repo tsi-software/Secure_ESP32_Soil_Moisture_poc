@@ -88,27 +88,25 @@ extern "C" void app_main(void)
                 wifiConfig.get_password()
         );
     }
-    {
-        GlobalConfig globalConfig;
-        app_sntp_sync_time( globalConfig.get_sntp_server() );
-    }
 
-    // The memory held by 'mqttConfig' is needed for the start-up of the task that runs the mqtt client code
-    // and must not go out-of-soope too soon. See 'ulTaskNotifyTakeIndexed(...)' below.
+    // The memory held by 'globalConfig' and 'mqttConfig' are needed for
+    //  the start-up of the task that runs the mqtt client code and
+    //  must not go out-of-soope too soon. See 'ulTaskNotifyTakeIndexed(...)' below.
+    GlobalConfig globalConfig;
+    app_sntp_sync_time( globalConfig.get_sntp_server() );
+
     MqttConfig mqttConfig;
-    {
-        mqtt_startup_notify.taskToNotify = xTaskGetCurrentTaskHandle();
-        mqtt_startup_notify.indexToNotify = MQTT_INDEX_TO_NOTIFY;
-
-        app_mqtt50_start(
-                &mqtt_startup_notify,
-                app_event_loop_handle,
-                mqttConfig.get_broker_url(),
-                mqttConfig.get_ca_cert(),
-                mqttConfig.get_client_cert(),
-                mqttConfig.get_client_key()
-        );
-    }
+    mqtt_startup_notify.taskToNotify = xTaskGetCurrentTaskHandle();
+    mqtt_startup_notify.indexToNotify = MQTT_INDEX_TO_NOTIFY;
+    app_mqtt50_start(
+            &mqtt_startup_notify,
+            app_event_loop_handle,
+            globalConfig.get_app_uuid(),
+            mqttConfig.get_broker_url(),
+            mqttConfig.get_ca_cert(),
+            mqttConfig.get_client_cert(),
+            mqttConfig.get_client_key()
+    );
 
     app_timer_init(app_event_loop_handle);
     app_read_touch_pads_init(app_event_loop_handle);

@@ -16,6 +16,7 @@ extern "C" {
 extern void app_mqtt50_start(
         globalTaskNotifyParams *startup_notify,
         esp_event_loop_handle_t event_loop,
+        const char *device_id,
         const char *broker_url,
         const char *ca_cert,
         const char *client_cert,

@@ -15,6 +15,11 @@ app_mqtt50.c
 
 static const char *LOG_TAG = "app_mqtt";
 
+struct mqtt_publish_params {
+    esp_mqtt_client_handle_t mqtt_client;
+    const char *device_id;
+};
+
 
 
 // static esp_mqtt5_user_property_item_t user_property_arr[] = {
@@ -119,6 +124,7 @@ static void mqtt_startup_handler(void *handler_args, esp_event_base_t base, int3
 }
 
 
+
 /*
  * @brief Event handler registered to receive MQTT events
  *
@@ -196,27 +202,41 @@ static void mqtt5_event_handler(void *handler_args, esp_event_base_t base, int32
 }
 
 
+
 static void app_touch_value_handler(void* handler_args, esp_event_base_t base, int32_t id, void* event_data)
 {
-    // typedef struct {
-    //     uint16_t touch_value;
-    //     uint8_t touch_pad_num;
-    // } app_touch_value_change_event_payload;
+    struct mqtt_publish_params *mqtt_publish_params = handler_args;
     app_touch_value_change_event_payload *payload = event_data;
+
+    const char *topic_str_fmt = "/soilmoisture/%s/capacitive/%u";
+    const char *data_str_fmt =  "%u,%lld";
 
     // MQTT Topic
     // soilmoisture/<device-id>/{analog,capacitive}/<sensor-id>
     // The Message is the sensor's numeric value formatted as a string.
     // touch_pad_num is 8 bits  ... 2^8 = 256 (i.e. 3 characters)
+    // MQTT Data
     // touch_value is 16 bits   ... 2^16 = 65536 (i.e. 5 characters)
     // utc_timestamp is 64 bits ... 2^64 ~ 18,446,744,073,709,600,000 (i.e. 20 characters)
+    const unsigned device_id_strlen = strlen(mqtt_publish_params->device_id);
+    const unsigned touch_pad_num_strlen = 3;
+    const unsigned touch_value_strlen = 5;
+    const unsigned timestamp_strlen = 20;
+
+    // Calculate the length of each formatted string,
+    //... and always add 1 for the null terminator.
+    const unsigned topic_strlen = strlen(topic_str_fmt)-4 + device_id_strlen + touch_pad_num_strlen + 1;
+    const unsigned data_strlen = strlen(data_str_fmt)-6 + touch_value_strlen + timestamp_strlen + 1;
+
+    char topic[topic_strlen];
+    char data[data_strlen];
     int num_of_characters;
-    char topic[27 + 4 + 2];  // 2^8 needs 3 characters.
-    char data[6 + 2 + 20 + 2];  //2^16 = needs 5 characters and 2^64 needs 20 characters.
+    num_of_characters = snprintf(topic, topic_strlen, topic_str_fmt,
+                                 mqtt_publish_params->device_id, payload->touch_pad_num);
+    num_of_characters = snprintf(data, data_strlen, data_str_fmt,
+                                 payload->touch_value, payload->utc_timestamp);
+
     //TODO: test 'num_of_characters' and handle error situation as necessary.
-    //TODO: implement a meaningful <device-id>.
-    num_of_characters = snprintf(topic, sizeof(topic), "/soilmoisture/1/capacitive/%u", payload->touch_pad_num);
-    num_of_characters = snprintf(data, sizeof(data), "%u,%lld", payload->touch_value, payload->utc_timestamp);
 
     // https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/protocols/mqtt.html#_CPPv416esp_mqtt_event_t
     // int esp_mqtt_client_enqueue(
@@ -226,8 +246,7 @@ static void app_touch_value_handler(void* handler_args, esp_event_base_t base, i
     //     int qos, int retain, bool store
     // )
     // Returns message_id if queued successfully, -1 on failure, -2 in case of full outbox.
-    esp_mqtt_client_handle_t mqtt_client = handler_args;
-    int msg_id = esp_mqtt_client_enqueue(mqtt_client, topic, data,0, 0,0,true);
+    int msg_id = esp_mqtt_client_enqueue(mqtt_publish_params->mqtt_client, topic, data,0, 0,0,true);
     if (msg_id == -1) {
         // Failure.
         ESP_LOGE(LOG_TAG, "FAILURE: esp_mqtt_client_enqueue(): %s, %s", topic, data);
@@ -249,6 +268,7 @@ static void app_touch_value_handler(void* handler_args, esp_event_base_t base, i
 void app_mqtt50_start(
         globalTaskNotifyParams *startup_notify,
         esp_event_loop_handle_t event_loop,
+        const char *device_id,
         const char *broker_url,
         const char *ca_cert,
         const char *client_cert,
@@ -345,20 +365,22 @@ void app_mqtt50_start(
         break;
     }
 
-    // esp_err_t esp_event_handler_instance_register_with(
-    //     esp_event_loop_handle_t event_loop,
-    //     esp_event_base_t event_base,
-    //     int32_t event_id,
-    //     esp_event_handler_t event_handler,
-    //     void *event_handler_arg,
-    //     esp_event_handler_instance_t *instance
-    // )
+    size_t device_id_len = strlen(device_id);
+    char *buffer = malloc(device_id_len + 1);
+    strncpy(buffer, device_id, device_id_len);
+    buffer[device_id_len] = '\0';
+
+    // 'mqtt_publish_params' must be static because it must survive after this function returns.
+    static struct mqtt_publish_params mqtt_publish_params;
+    mqtt_publish_params.mqtt_client = client;
+    mqtt_publish_params.device_id = buffer;
+
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(
             event_loop,
             APP_TOUCH_EVENTS,
             APP_TOUCH_VALUE_CHANGE_EVENT,
             app_touch_value_handler,
-            client,
+            &mqtt_publish_params,
             NULL
     ));
 }
