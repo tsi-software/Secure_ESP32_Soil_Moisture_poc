@@ -24,7 +24,7 @@ enum {
 
 typedef struct {
     time_t utc_timestamp;
-    uint16_t touch_value;
+    uint32_t touch_value;
     uint8_t touch_pad_num;
 } app_touch_value_change_event_payload;
 

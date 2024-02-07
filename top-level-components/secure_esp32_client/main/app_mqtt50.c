@@ -209,18 +209,19 @@ static void app_touch_value_handler(void* handler_args, esp_event_base_t base, i
     app_touch_value_change_event_payload *payload = event_data;
 
     const char *topic_str_fmt = "/soilmoisture/%s/capacitive/%u";
-    const char *data_str_fmt =  "%u,%lld";
+    const char *data_str_fmt =  "%lu,%lld";
 
     // MQTT Topic
     // soilmoisture/<device-id>/{analog,capacitive}/<sensor-id>
     // The Message is the sensor's numeric value formatted as a string.
     // touch_pad_num is 8 bits  ... 2^8 = 256 (i.e. 3 characters)
     // MQTT Data
-    // touch_value is 16 bits   ... 2^16 = 65536 (i.e. 5 characters)
+    // touch_value if 16 bits   ... 2^16 = 65536 (i.e. 5 characters)
+    // touch_value if 32 bits   ... 2^32 = 4294967296 (i.e. 10 characters)
     // utc_timestamp is 64 bits ... 2^64 ~ 18,446,744,073,709,600,000 (i.e. 20 characters)
     const unsigned device_id_strlen = strlen(mqtt_publish_params->device_id);
     const unsigned touch_pad_num_strlen = 3;
-    const unsigned touch_value_strlen = 5;
+    const unsigned touch_value_strlen = 10;
     const unsigned timestamp_strlen = 20;
 
     // Calculate the length of each formatted string,

@@ -19,7 +19,7 @@ static const char* LOG_TAG = "app_timer";
 ESP_EVENT_DEFINE_BASE(APP_TIMER_EVENTS);
 
 
-static void periodic_timer_callback(void* arg)
+static void periodic_timer_callback(void *arg)
 {
     int64_t time_since_boot = esp_timer_get_time();
     ESP_LOGV(LOG_TAG, "Periodic timer called, time since boot: %lld us", time_since_boot);
