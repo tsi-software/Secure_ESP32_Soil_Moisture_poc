@@ -19,18 +19,24 @@ echo "SCRIPT=$SCRIPT"
 echo "SCRIPT_DIR=$SCRIPT_DIR"
 
 #TODO: auto-recognize the USB device.
-ls -l /dev | grep -i USB
+ls -1 --file-type /dev | egrep -i "(acm)|(usb)"
+TTY_DEVICE=ttyACM0
+#TTY_DEVICE=ttyUSB0
 
 SRC_DIR=${SCRIPT_DIR}/top-level-components/secure_esp32_client
+ENV_FILE=${SCRIPT_DIR}/esp-idf-docker_dev.env
+#ENV_FILE=${SCRIPT_DIR}/esp-idf-docker_prod.env
 
-#cd "${SCRIPT_DIR}/top-level-components/secure_esp32_client"
-# docker run --rm --group-add dialout --device=/dev/ttyUSB0 -v $PWD:/src -w /src -it espressif/idf:release-v5.1
+IDF_DOCKER_TAG=release-v5.2
+#IDF_DOCKER_TAG=release-v5.1
+#IDF_DOCKER_TAG=latest
 
 set -x
 docker run --rm --interactive --tty \
-  --group-add dialout --device=/dev/ttyUSB0 \
+  --group-add dialout --device=/dev/${TTY_DEVICE} --env ESPTOOL_PORT=/dev/${TTY_DEVICE} \
+  --env-file ${ENV_FILE} \
   --volume ${SRC_DIR}:/project/src \
   --volume ${SCRIPT_DIR}/private:/project/private \
   --volume ${SCRIPT_DIR}/tools:/project/tools \
   --workdir /project/src \
-  espressif/idf:release-v5.1
+  espressif/idf:${IDF_DOCKER_TAG}
