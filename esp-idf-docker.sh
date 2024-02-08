@@ -24,6 +24,7 @@ TTY_DEVICE=ttyACM0
 #TTY_DEVICE=ttyUSB0
 
 SRC_DIR=${SCRIPT_DIR}/top-level-components/secure_esp32_client
+NVS_DIR=${SCRIPT_DIR}/top-level-components/nvs_set_values
 ENV_FILE=${SCRIPT_DIR}/esp-idf-docker_dev.env
 #ENV_FILE=${SCRIPT_DIR}/esp-idf-docker_prod.env
 
@@ -36,6 +37,7 @@ docker run --rm --interactive --tty \
   --group-add dialout --device=/dev/${TTY_DEVICE} --env ESPTOOL_PORT=/dev/${TTY_DEVICE} \
   --env-file ${ENV_FILE} \
   --volume ${SRC_DIR}:/project/src \
+  --volume ${NVS_DIR}:/project/nvs_src \
   --volume ${SCRIPT_DIR}/private:/project/private \
   --volume ${SCRIPT_DIR}/tools:/project/tools \
   --workdir /project/src \

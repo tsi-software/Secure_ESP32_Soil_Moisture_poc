@@ -37,6 +37,7 @@
 *.crt
 *.csr
 *.key
+credential*.*
 
 # Other
 sample_*
