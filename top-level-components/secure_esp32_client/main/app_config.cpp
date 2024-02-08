@@ -1,7 +1,7 @@
 /*
 app_config.cpp
 */
-
+#include <cstring>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_log.h"
@@ -61,6 +61,15 @@ AppConfig::ConfigStr AppConfig::get_str(const char *key)
         if (err == ESP_OK) {
             // DO NOT log 'buffer' here because it may contain sensitive information.
             buffer[required_size] = '\0'; // Guarantee a null terminator.
+            // Remove trailing New Line and/or Carriage Return.
+            while(true) {
+                size_t len = strlen(buffer.get());
+                if (buffer[len-1] == '\n' || buffer[len-1] == '\r') {
+                    buffer[len-1] = '\0';
+                } else {
+                    break;
+                }
+            }
         } else {
             return null_result;
         }
