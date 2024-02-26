@@ -41,8 +41,16 @@ def get_data_dir(args, config):
         '../../output_data',
     ]
 
+    config_output_dir = config.get('Output', 'output_dir', fallback=None)
+    if config_output_dir is not None:
+        data_dirs.insert(0, config_output_dir)
+        logger.debug(f'{config_output_dir=}')
+    else:
+        logger.debug("config['Output']['output_dir'] NOT GIVEN.")
+
     for test_dir in data_dirs:
         if os.path.isdir(test_dir):
+            logger.info(f'data dir: {test_dir}')
             return test_dir
 
     raise Exception('Sensor Data directory NOT FOUND!')

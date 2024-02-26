@@ -118,6 +118,8 @@ class SaveMqttMessages:
     async def listen_for_moisture_values(self, mqtt_listen_queue: QueueType):
         """
         """
+        logger.info(f'listen_for_moisture_values(...)\n{self}')
+
         async with aiomqtt.Client(
             hostname=self.hostname,
             port=self.port,

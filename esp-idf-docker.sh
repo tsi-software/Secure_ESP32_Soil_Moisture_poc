@@ -23,6 +23,8 @@ ls -1 --file-type /dev | egrep -i "(acm)|(usb)"
 TTY_DEVICE=ttyACM0
 #TTY_DEVICE=ttyUSB0
 
+#TODO: deprecate NVS_DIR and volume "/project/nvs_src"
+
 SRC_DIR=${SCRIPT_DIR}/top-level-components/secure_esp32_client
 NVS_DIR=${SCRIPT_DIR}/top-level-components/nvs_set_values
 ENV_FILE=${SCRIPT_DIR}/esp-idf-docker_dev.env
