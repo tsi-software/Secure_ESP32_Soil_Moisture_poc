@@ -30,6 +30,11 @@
 #include "app_globals.h"
 
 
+#ifdef __cplusplus
+extern "C" void app_main(void);
+#endif
+
+
 static const char *LOG_TAG = "app_main";
 
 static esp_event_loop_handle_t app_event_loop_handle;
@@ -43,7 +48,7 @@ static globalTaskNotifyParams mqtt_startup_notify;
 
 
 
-extern "C" void app_main(void)
+void app_main(void)
 {
     esp_err_t ret;
 

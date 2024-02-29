@@ -52,6 +52,7 @@ build/
 private/
 secure/
 .venv/
+managed_components/
 
 # Temporary
 DEL-ME/
