@@ -115,7 +115,7 @@ static void post_touch_values_u32(uint32_t *touch_values)
                 break;
             case ESP_ERR_TIMEOUT:
                 // Ignore and try again next time.
-                ESP_LOGW(LOG_TAG, "APP_TOUCH_VALUE_CHANGE_EVENT timed-out! Ignoring and trying again.");
+                ESP_LOGD(LOG_TAG, "APP_TOUCH_VALUE_CHANGE_EVENT timed-out! Ignoring and trying again.");
                 prior_touch_value[ndx] = 0;
                 // ?? force_update = true; ??
                 break;

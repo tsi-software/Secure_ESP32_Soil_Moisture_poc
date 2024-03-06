@@ -98,6 +98,11 @@ static void log_error_if_nonzero(const char *message, int error_code)
 
 
 
+/**
+The only purpose of mqtt_startup_handler is to Notify the main thread that this task
+has either successfully started or errored out.
+In either case, after this point, this handler is no longer needed.
+*/
 static void mqtt_startup_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data)
 {
     ESP_LOGD(LOG_TAG, "mqtt_startup_handler: Event dispatched from event loop base=%s, event_id=%" PRIi32, base, event_id);
@@ -203,16 +208,20 @@ static void mqtt5_event_handler(void *handler_args, esp_event_base_t base, int32
 
 
 
+/*
+Handle Touch Pad messages coming from the app queue
+and send them out as MQTT messages.
+*/
 static void app_touch_value_handler(void* handler_args, esp_event_base_t base, int32_t id, void* event_data)
 {
     struct mqtt_publish_params *mqtt_publish_params = handler_args;
     app_touch_value_change_event_payload *payload = event_data;
 
-    const char *topic_str_fmt = "/soilmoisture/%s/capacitive/%u";
+    const char *topic_str_fmt = "soilmoisture/%s/touchpad/%u";
     const char *data_str_fmt =  "%lu,%lld";
 
     // MQTT Topic
-    // soilmoisture/<device-id>/{analog,capacitive}/<sensor-id>
+    // soilmoisture/<device-id>/{analog,touchpad}/<sensor-id>
     // The Message is the sensor's numeric value formatted as a string.
     // touch_pad_num is 8 bits  ... 2^8 = 256 (i.e. 3 characters)
     // MQTT Data
@@ -285,7 +294,7 @@ void app_mqtt50_start(
         .will_delay_interval = 10,
         .message_expiry_interval = 10,
         .payload_format_indicator = true,
-        .response_topic = "/soilmoisture/response",
+        .response_topic = "soilmoisture/response",
         .correlation_data = "soilmoisture",
         .correlation_data_len = 12,
     };
@@ -321,7 +330,7 @@ void app_mqtt50_start(
     ////esp_mqtt5_client_delete_user_property(connect_property.user_property);
     ////esp_mqtt5_client_delete_user_property(connect_property.will_user_property);
 
-    // The mqtt_startup_handler is used to Notify the main thread that the mqtt task
+    // The mqtt_startup_handler is only used to Notify the main thread that the mqtt task
     //  has either successfully started or errored out and that this task will no longer
     //  be accessing the memory allocated to the config arguments pass in to this function.
     err = esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt_startup_handler, startup_notify);
@@ -359,17 +368,44 @@ void app_mqtt50_start(
         break;
     case ESP_ERR_INVALID_ARG:
         ESP_LOGE(LOG_TAG, "MQTT5 Invalid Arg (%s) - Server '%s'!", esp_err_to_name(err), mqtt_cfg.broker.address.uri);
-        break;
+        return;
     case ESP_FAIL:
     default:
         ESP_LOGE(LOG_TAG, "MQTT5 Error (%s) - Server '%s'!", esp_err_to_name(err), mqtt_cfg.broker.address.uri);
-        break;
+        return;
     }
 
-    size_t device_id_len = strlen(device_id);
-    char *buffer = malloc(device_id_len + 1);
-    strncpy(buffer, device_id, device_id_len);
-    buffer[device_id_len] = '\0';
+    //-------------------------------------------------------------------
+    // Subscribe to MQTT Topics.
+    //-------------------------------------------------------------------
+    const size_t device_id_strlen = strlen(device_id);
+    {
+        // Use this scope to manage larger stack variables.
+        const char *topic_str_fmt = "soilmoisture/%s/touchpad/config/#";
+
+        // Calculate the length of formatted strings,
+        //... and always add 1 for the null terminator.
+        const unsigned topic_strlen = strlen(topic_str_fmt)-2 + device_id_strlen + 1;
+
+        char topic[topic_strlen];
+        snprintf(topic, topic_strlen, topic_str_fmt, device_id);
+
+        //TODO: make 'qos' a configurable value.
+        const int qos = 0;
+        int rslt = esp_mqtt_client_subscribe(client, topic, qos);
+        if (rslt >= 0) {
+            ESP_LOGI(LOG_TAG, "Subscribed to '%s'.", topic);
+        } else {
+            ESP_LOGI(LOG_TAG, "FAILED to subscribe to '%s'.", topic);
+        }
+    }
+
+    //-------------------------------------------------------------------
+    // Start listening for Touch Pad messages coming from the app queue.
+    //-------------------------------------------------------------------
+    char *buffer = malloc(device_id_strlen + 1);
+    strncpy(buffer, device_id, device_id_strlen);
+    buffer[device_id_strlen] = '\0';
 
     // 'mqtt_publish_params' must be static because it must survive after this function returns.
     static struct mqtt_publish_params mqtt_publish_params;
