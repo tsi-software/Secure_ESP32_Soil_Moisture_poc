@@ -2,7 +2,8 @@
 app_mqtt50.cpp
 */
 
-#include <stdio.h>
+#include <sstream>
+
 #include "freertos/FreeRTOS.h"
 //#include "freertos/task.h"
 #include "esp_log.h"
@@ -55,6 +56,9 @@ static void log_error_if_nonzero(const char *message, int error_code)
 
 
 /**
+TODO: mqtt_startup_handler(...) and mqtt5_event_handler(...) are redundant.
+      roll mqtt_startup_handler() into mqtt5_event_handler().
+
 The only purpose of mqtt_startup_handler is to Notify the main thread that this task
 has either successfully started or errored out.
 In either case, after this point, this handler is no longer needed.
@@ -238,56 +242,6 @@ void app_mqtt50_start(
         const char *broker_url,
         esp_mqtt_client_handle_t client
 ) {
-    /****
-
-    esp_mqtt5_connection_property_config_t connect_property = {
-        .session_expiry_interval = 0, //10,  // seconds
-        .maximum_packet_size = 1024,
-        .receive_maximum = 65535,
-        .topic_alias_maximum = 2,
-        .request_resp_info = true,
-        .request_problem_info = true,
-        .will_delay_interval = 10,
-        .message_expiry_interval = 10,
-        .payload_format_indicator = true,
-        .response_topic = "soilmoisture/response",
-        .correlation_data = "soilmoisture",
-        .correlation_data_len = 12,
-    };
-
-    esp_mqtt_client_config_t mqtt_cfg = {
-        .broker.address.uri = broker_url,
-        .broker.verification.certificate = ca_cert,
-        .credentials = {
-          .authentication = {
-            .certificate = client_cert,
-            .key = client_key,
-          },
-        },
-        .session.protocol_ver = MQTT_PROTOCOL_V_5,
-        // .session.last_will.topic = "/topic/will",
-        // .session.last_will.msg = "i will leave",
-        // .session.last_will.msg_len = 12,
-        // .session.last_will.qos = 1,
-        // .session.last_will.retain = true,
-        //.network.disable_auto_reconnect = true,
-    };
-
-    esp_err_t err;
-    esp_mqtt_client_handle_t client = esp_mqtt_client_init(&mqtt_cfg);
-
-    // Set connection properties and user properties 
-    ////esp_mqtt5_client_set_user_property(&connect_property.user_property, user_property_arr, USE_PROPERTY_ARR_SIZE);
-    ////esp_mqtt5_client_set_user_property(&connect_property.will_user_property, user_property_arr, USE_PROPERTY_ARR_SIZE);
-    esp_mqtt5_client_set_connect_property(client, &connect_property);
-
-    // If you call esp_mqtt5_client_set_user_property to set user properties, DO NOT forget to delete them.
-    // esp_mqtt5_client_set_connect_property will malloc buffer to store the user_property and you can delete it after
-    ////esp_mqtt5_client_delete_user_property(connect_property.user_property);
-    ////esp_mqtt5_client_delete_user_property(connect_property.will_user_property);
-
-    ****/
-
     esp_err_t err;
 
     // The mqtt_startup_handler is only used to Notify the main thread that the mqtt task
@@ -338,8 +292,8 @@ void app_mqtt50_start(
     //-------------------------------------------------------------------
     // Subscribe to MQTT Topics.
     //-------------------------------------------------------------------
-    const size_t device_id_strlen = strlen(device_id);
     {
+        /****
         // Use this scope to manage larger stack variables.
         const char *topic_str_fmt = "soilmoisture/%s/touchpad/config/#";
 
@@ -349,20 +303,26 @@ void app_mqtt50_start(
 
         char topic[topic_strlen];
         snprintf(topic, topic_strlen, topic_str_fmt, device_id);
+        ****/
+
+        std::ostringstream sstr;
+        sstr << "soilmoisture/" << device_id << "/touchpad/config/#";
+        std::string topic_str = sstr.str();
 
         //TODO: make 'qos' a configurable value.
         const int qos = 0;
-        int rslt = esp_mqtt_client_subscribe(client, topic, qos);
+        int rslt = esp_mqtt_client_subscribe(client, topic_str.c_str(), qos);
         if (rslt >= 0) {
-            ESP_LOGI(LOG_TAG, "Subscribed to '%s'.", topic);
+            ESP_LOGI(LOG_TAG, "Subscribed to '%s'.", topic_str.c_str());
         } else {
-            ESP_LOGI(LOG_TAG, "FAILED to subscribe to '%s'.", topic);
+            ESP_LOGI(LOG_TAG, "FAILED to subscribe to '%s'.", topic_str.c_str());
         }
     }
 
     //-------------------------------------------------------------------
     // Start listening for Touch Pad messages coming from the app queue.
     //-------------------------------------------------------------------
+    const size_t device_id_strlen = strlen(device_id);
     char *buffer = static_cast<char *>(malloc(device_id_strlen + 1));
     strncpy(buffer, device_id, device_id_strlen);
     buffer[device_id_strlen] = '\0';

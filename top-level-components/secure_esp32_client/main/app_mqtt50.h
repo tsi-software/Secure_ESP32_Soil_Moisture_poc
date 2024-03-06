@@ -14,6 +14,7 @@ app_mqtt50.h
 extern "C" {
 #endif
 
+// function defined in app_mqtt50_init.c
 extern esp_mqtt_client_handle_t app_mqtt50_init(
         const char *broker_url,
         const char *ca_cert,
@@ -21,6 +22,7 @@ extern esp_mqtt_client_handle_t app_mqtt50_init(
         const char *client_key
 );
 
+// function defined in app_mqtt50.cpp
 extern void app_mqtt50_start(
         globalTaskNotifyParams *startup_notify,
         esp_event_loop_handle_t event_loop,

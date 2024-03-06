@@ -2,7 +2,6 @@
 app_mqtt50_init.c
 */
 
-//#include <stdio.h>
 //#include "freertos/FreeRTOS.h"
 #include "esp_log.h"
 #include "mqtt_client.h"
@@ -66,6 +65,8 @@ esp_mqtt_client_handle_t app_mqtt50_init(
         const char *client_cert,
         const char *client_key
 ) {
+    ESP_LOGD(LOG_TAG, "app_mqtt50_init(...)");
+
     esp_mqtt5_connection_property_config_t connect_property = {
         .session_expiry_interval = 0, //10,  // seconds
         .maximum_packet_size = 1024,
@@ -99,7 +100,6 @@ esp_mqtt_client_handle_t app_mqtt50_init(
         //.network.disable_auto_reconnect = true,
     };
 
-    esp_err_t err;
     esp_mqtt_client_handle_t client = esp_mqtt_client_init(&mqtt_cfg);
 
     // Set connection properties and user properties 
