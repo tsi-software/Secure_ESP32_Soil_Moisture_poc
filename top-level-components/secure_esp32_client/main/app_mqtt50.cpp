@@ -1,5 +1,5 @@
 /*
-app_mqtt50.c
+app_mqtt50.cpp
 */
 
 #include <stdio.h>
@@ -15,56 +15,12 @@ app_mqtt50.c
 
 static const char *LOG_TAG = "app_mqtt";
 
+static const esp_mqtt_event_id_t APP_EVENT_ANY_ID = static_cast<esp_mqtt_event_id_t>(ESP_EVENT_ANY_ID);
+
 struct mqtt_publish_params {
     esp_mqtt_client_handle_t mqtt_client;
     const char *device_id;
 };
-
-
-
-// static esp_mqtt5_user_property_item_t user_property_arr[] = {
-//         {"board", "esp32"},
-//         {"u", "user"},
-//         {"p", "password"}
-//     };
-// #define USE_PROPERTY_ARR_SIZE   sizeof(user_property_arr)/sizeof(esp_mqtt5_user_property_item_t)
-
-/***
-static esp_mqtt5_publish_property_config_t publish_property = {
-    .payload_format_indicator = 1,
-    .message_expiry_interval = 1000,
-    .topic_alias = 0,
-    .response_topic = "/topic/test/response",
-    .correlation_data = "123456",
-    .correlation_data_len = 6,
-};
-
-static esp_mqtt5_subscribe_property_config_t subscribe_property = {
-    .subscribe_id = 25555,
-    .no_local_flag = false,
-    .retain_as_published_flag = false,
-    .retain_handle = 0,
-    .is_share_subscribe = true,
-    .share_name = "group1",
-};
-
-static esp_mqtt5_subscribe_property_config_t subscribe1_property = {
-    .subscribe_id = 25555,
-    .no_local_flag = true,
-    .retain_as_published_flag = false,
-    .retain_handle = 0,
-};
-
-static esp_mqtt5_unsubscribe_property_config_t unsubscribe_property = {
-    .is_share_subscribe = true,
-    .share_name = "group1",
-};
-
-static esp_mqtt5_disconnect_property_config_t disconnect_property = {
-    .session_expiry_interval = 60,
-    .disconnect_reason = 0,
-};
-***/
 
 
 
@@ -116,8 +72,8 @@ static void mqtt_startup_handler(void *handler_args, esp_event_base_t base, int3
     //  has either successfully started or errored out.
     // In either case, after this point, this handler is no longer needed.
     esp_err_t err;
-    esp_mqtt_event_handle_t event = event_data;
-    err = esp_mqtt_client_unregister_event(event->client, ESP_EVENT_ANY_ID, mqtt_startup_handler);
+    esp_mqtt_event_handle_t event = static_cast<esp_mqtt_event_handle_t>(event_data);
+    err = esp_mqtt_client_unregister_event(event->client, APP_EVENT_ANY_ID, mqtt_startup_handler);
     if (err != ESP_OK) {
         ESP_LOGE(LOG_TAG, "esp_mqtt_client_unregister_event(...,mqtt_startup_handler): %s!", esp_err_to_name(err));
     }
@@ -148,7 +104,7 @@ static void mqtt5_event_handler(void *handler_args, esp_event_base_t base, int32
              esp_get_minimum_free_heap_size()
     );
 
-    esp_mqtt_event_handle_t event = event_data;
+    esp_mqtt_event_handle_t event = static_cast<esp_mqtt_event_handle_t>(event_data);
 
     switch ((esp_mqtt_event_id_t)event_id) {
     case MQTT_EVENT_BEFORE_CONNECT:
@@ -214,8 +170,8 @@ and send them out as MQTT messages.
 */
 static void app_touch_value_handler(void* handler_args, esp_event_base_t base, int32_t id, void* event_data)
 {
-    struct mqtt_publish_params *mqtt_publish_params = handler_args;
-    app_touch_value_change_event_payload *payload = event_data;
+    struct mqtt_publish_params *mqtt_publish_params = static_cast<struct mqtt_publish_params *>(handler_args);
+    app_touch_value_change_event_payload *payload = static_cast<app_touch_value_change_event_payload *>(event_data);
 
     const char *topic_str_fmt = "soilmoisture/%s/touchpad/%u";
     const char *data_str_fmt =  "%lu,%lld";
@@ -280,10 +236,10 @@ void app_mqtt50_start(
         esp_event_loop_handle_t event_loop,
         const char *device_id,
         const char *broker_url,
-        const char *ca_cert,
-        const char *client_cert,
-        const char *client_key
+        esp_mqtt_client_handle_t client
 ) {
+    /****
+
     esp_mqtt5_connection_property_config_t connect_property = {
         .session_expiry_interval = 0, //10,  // seconds
         .maximum_packet_size = 1024,
@@ -330,16 +286,20 @@ void app_mqtt50_start(
     ////esp_mqtt5_client_delete_user_property(connect_property.user_property);
     ////esp_mqtt5_client_delete_user_property(connect_property.will_user_property);
 
+    ****/
+
+    esp_err_t err;
+
     // The mqtt_startup_handler is only used to Notify the main thread that the mqtt task
     //  has either successfully started or errored out and that this task will no longer
     //  be accessing the memory allocated to the config arguments pass in to this function.
-    err = esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt_startup_handler, startup_notify);
+    err = esp_mqtt_client_register_event(client, APP_EVENT_ANY_ID, mqtt_startup_handler, startup_notify);
     if (err != ESP_OK) {
         ESP_LOGE(LOG_TAG, "esp_mqtt_client_register_event(...,mqtt_startup_handler): %s!", esp_err_to_name(err));
     }
 
     // The mqtt5_event_handler is used for general MQTT events.
-    err = esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt5_event_handler, NULL);
+    err = esp_mqtt_client_register_event(client, APP_EVENT_ANY_ID, mqtt5_event_handler, NULL);
     if (err != ESP_OK) {
         ESP_LOGE(LOG_TAG, "esp_mqtt_client_register_event(...,mqtt5_event_handler): %s!", esp_err_to_name(err));
     }
@@ -348,12 +308,12 @@ void app_mqtt50_start(
     if (err != ESP_OK) {
         // MQTT Client failed to start!
         esp_err_t err2;
-        err2 = esp_mqtt_client_unregister_event(client, ESP_EVENT_ANY_ID, mqtt_startup_handler);
+        err2 = esp_mqtt_client_unregister_event(client, APP_EVENT_ANY_ID, mqtt_startup_handler);
         if (err2 != ESP_OK) {
             ESP_LOGE(LOG_TAG, "esp_mqtt_client_unregister_event(...,mqtt_startup_handler): %s!", esp_err_to_name(err2));
         }
 
-        err2 = esp_mqtt_client_unregister_event(client, ESP_EVENT_ANY_ID, mqtt5_event_handler);
+        err2 = esp_mqtt_client_unregister_event(client, APP_EVENT_ANY_ID, mqtt5_event_handler);
         if (err2 != ESP_OK) {
             ESP_LOGE(LOG_TAG, "esp_mqtt_client_unregister_event(...,mqtt5_event_handler): %s!", esp_err_to_name(err2));
         }
@@ -364,14 +324,14 @@ void app_mqtt50_start(
 
     switch(err) {
     case ESP_OK:
-        ESP_LOGI(LOG_TAG, "Connecting to MQTT5 server '%s'.", mqtt_cfg.broker.address.uri);
+        ESP_LOGI(LOG_TAG, "Connecting to MQTT5 server '%s'.", broker_url);
         break;
     case ESP_ERR_INVALID_ARG:
-        ESP_LOGE(LOG_TAG, "MQTT5 Invalid Arg (%s) - Server '%s'!", esp_err_to_name(err), mqtt_cfg.broker.address.uri);
+        ESP_LOGE(LOG_TAG, "MQTT5 Invalid Arg (%s) - Server '%s'!", esp_err_to_name(err), broker_url);
         return;
     case ESP_FAIL:
     default:
-        ESP_LOGE(LOG_TAG, "MQTT5 Error (%s) - Server '%s'!", esp_err_to_name(err), mqtt_cfg.broker.address.uri);
+        ESP_LOGE(LOG_TAG, "MQTT5 Error (%s) - Server '%s'!", esp_err_to_name(err), broker_url);
         return;
     }
 
@@ -403,7 +363,7 @@ void app_mqtt50_start(
     //-------------------------------------------------------------------
     // Start listening for Touch Pad messages coming from the app queue.
     //-------------------------------------------------------------------
-    char *buffer = malloc(device_id_strlen + 1);
+    char *buffer = static_cast<char *>(malloc(device_id_strlen + 1));
     strncpy(buffer, device_id, device_id_strlen);
     buffer[device_id_strlen] = '\0';
 

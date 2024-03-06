@@ -98,14 +98,18 @@ extern "C" void app_main(void)
     MqttConfig mqttConfig;
     mqtt_startup_notify.taskToNotify = xTaskGetCurrentTaskHandle();
     mqtt_startup_notify.indexToNotify = MQTT_INDEX_TO_NOTIFY;
+    esp_mqtt_client_handle_t client = app_mqtt50_init(
+            mqttConfig.get_broker_url(),
+            mqttConfig.get_ca_cert(),
+            mqttConfig.get_client_cert(),
+            mqttConfig.get_client_key()
+    );
     app_mqtt50_start(
             &mqtt_startup_notify,
             app_event_loop_handle,
             globalConfig.get_app_uuid(),
             mqttConfig.get_broker_url(),
-            mqttConfig.get_ca_cert(),
-            mqttConfig.get_client_cert(),
-            mqttConfig.get_client_key()
+            client
     );
 
     app_timer_init(app_event_loop_handle);
