@@ -139,13 +139,18 @@ static void mqtt5_event_handler(void *handler_args, esp_event_base_t base, int32
 
     case MQTT_EVENT_DATA:
         ESP_LOGI(LOG_TAG, "MQTT_EVENT_DATA");
-        // print_user_property(event->property->user_property);
-        ESP_LOGI(LOG_TAG, "payload_format_indicator is %d", event->property->payload_format_indicator);
-        ESP_LOGI(LOG_TAG, "response_topic is %.*s", event->property->response_topic_len, event->property->response_topic);
-        ESP_LOGI(LOG_TAG, "correlation_data is %.*s", event->property->correlation_data_len, event->property->correlation_data);
-        ESP_LOGI(LOG_TAG, "content_type is %.*s", event->property->content_type_len, event->property->content_type);
+        ESP_LOGD(LOG_TAG, "payload_format_indicator is %d", event->property->payload_format_indicator);
+        ESP_LOGD(LOG_TAG, "response_topic is %.*s", event->property->response_topic_len, event->property->response_topic);
+        ESP_LOGD(LOG_TAG, "correlation_data is %.*s", event->property->correlation_data_len, event->property->correlation_data);
+        ESP_LOGD(LOG_TAG, "content_type is %.*s", event->property->content_type_len, event->property->content_type);
         ESP_LOGI(LOG_TAG, "TOPIC=%.*s", event->topic_len, event->topic);
         ESP_LOGI(LOG_TAG, "DATA=%.*s", event->data_len, event->data);
+        {
+            MqttUserProperties properties(event->property->user_property);
+            for (const auto& prop : properties.get_user_properties()) {
+                ESP_LOGI(LOG_TAG, "User Property: key=%s, value=%s", prop.first.c_str(), prop.second.c_str());
+            }
+        }
         break;
 
     case MQTT_EVENT_ERROR:
@@ -293,25 +298,30 @@ void app_mqtt50_start(
     // Subscribe to MQTT Topics.
     //-------------------------------------------------------------------
     {
-        /****
-        // Use this scope to manage larger stack variables.
-        const char *topic_str_fmt = "soilmoisture/%s/touchpad/config/#";
-
-        // Calculate the length of formatted strings,
-        //... and always add 1 for the null terminator.
-        const unsigned topic_strlen = strlen(topic_str_fmt)-2 + device_id_strlen + 1;
-
-        char topic[topic_strlen];
-        snprintf(topic, topic_strlen, topic_str_fmt, device_id);
-        ****/
-
-        std::ostringstream sstr;
-        sstr << "soilmoisture/" << device_id << "/touchpad/config/#";
-        std::string topic_str = sstr.str();
-
         //TODO: make 'qos' a configurable value.
         const int qos = 0;
-        int rslt = esp_mqtt_client_subscribe(client, topic_str.c_str(), qos);
+        int rslt;
+        std::ostringstream sstr;
+        std::string topic_str;
+
+        // sstr.str("");
+        // sstr.clear();
+        sstr << "soilmoisture/" << device_id << "/touchpad/config";
+        topic_str = sstr.str();
+
+        rslt = esp_mqtt_client_subscribe(client, topic_str.c_str(), qos);
+        if (rslt >= 0) {
+            ESP_LOGI(LOG_TAG, "Subscribed to '%s'.", topic_str.c_str());
+        } else {
+            ESP_LOGI(LOG_TAG, "FAILED to subscribe to '%s'.", topic_str.c_str());
+        }
+
+        sstr.str("");
+        sstr.clear();
+        sstr << "soilmoisture/" << device_id << "/touchpad/+/config";
+        topic_str = sstr.str();
+
+        rslt = esp_mqtt_client_subscribe(client, topic_str.c_str(), qos);
         if (rslt >= 0) {
             ESP_LOGI(LOG_TAG, "Subscribed to '%s'.", topic_str.c_str());
         } else {
