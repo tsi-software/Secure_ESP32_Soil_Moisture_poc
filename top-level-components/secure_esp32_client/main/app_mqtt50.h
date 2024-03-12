@@ -41,6 +41,13 @@ extern void app_mqtt50_start(
 #include <map>
 #include <string>
 
+/**
+Given 'mqtt5_user_property_handle_t user_property',
+extract the User Properties keys and values
+and store them in an std:map<string,string>.
+If a key occurs more than once then the last occurrence is kept.
+Properties with either a blank key or blank value are ignored.
+*/
 class MqttUserProperties {
 public:
     using properties_map = std::map<std::string, std::string>;
@@ -83,14 +90,6 @@ public:
                 if (value) {
                     free((void*)value);
                 }
-                // esp_mqtt5_user_property_item_t *t = &user_property_item[i];
-                // user_properties.insert({t->key, t->value});
-                // if (t->key) {
-                //     free((void*)t->key);
-                // }
-                // if (t->value) {
-                //     free((void*)t->value);
-                // }
             }
         } else {
             // err = ESP_FAIL or ESP_ERR_NO_MEM
