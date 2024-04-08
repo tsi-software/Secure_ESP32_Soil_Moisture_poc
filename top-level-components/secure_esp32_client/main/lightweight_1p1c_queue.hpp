@@ -1,0 +1,1 @@
+../../../snippets/lightweight_1p1c_queue.hpp
