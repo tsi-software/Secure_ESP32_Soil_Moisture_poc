@@ -146,14 +146,11 @@ static void app_timer_tick_handler(void* handler_args, esp_event_base_t base, in
 {
     uint32_t touch_values[TOUCH_PAD_MAX];
     for (int ndx = FIRST_TOUCH_PAD_INDEX; ndx < TOUCH_PAD_MAX; ++ndx) {
-
-#ifdef TOUCH_VALUE_16_BIT
+#if defined(TOUCH_VALUE_16_BIT)
         uint16_t tmp_u16;
         touch_pad_read_filtered(ndx, &tmp_u16);
         touch_values[ndx] = tmp_u16;
-#endif
-
-#ifdef TOUCH_VALUE_32_BIT
+#elif defined(TOUCH_VALUE_32_BIT)
         touch_pad_filter_read_smooth(ndx, &touch_values[ndx]);
 #endif
     }
