@@ -42,11 +42,21 @@ else
     echo "EXPIRE_DATE=${EXPIRE_DATE}"
 fi
 
-TARGET_DIR="${PRIVATE_DIR}/${HOSTNAME}_server_certs_${EXPIRE_DATE}"
+ACTIVE_CERTIFICATES_VARS="${PRIVATE_DIR}/active_certificates.vars"
+ACTIVE_CERTIFICATES_DIR=${HOSTNAME}_server_certs_${EXPIRE_DATE}
+TARGET_DIR="${PRIVATE_DIR}/${ACTIVE_CERTIFICATES_DIR}"
 echo "TARGET_DIR=$TARGET_DIR"
 # Must FAIL HARD if the target dir already exists!
 mkdir "${TARGET_DIR}"
 chmod go-rwx "${TARGET_DIR}"
+
+# Create and populate the file named "active_certificates.vars" in the private directory.
+# This file is used later, and elsewhere, to reference which certificate are to be used.
+# Do this AFTER the "mkdir ..." code above just in case the mkdir fails.
+echo "# Created: $NOW" > "${ACTIVE_CERTIFICATES_VARS}"
+echo "HOSTNAME=${HOSTNAME}" >> "${ACTIVE_CERTIFICATES_VARS}"
+echo "EXPIRE_DATE=${EXPIRE_DATE}" >> "${ACTIVE_CERTIFICATES_VARS}"
+echo "ACTIVE_CERTIFICATES_DIR=${ACTIVE_CERTIFICATES_DIR}" >> "${ACTIVE_CERTIFICATES_VARS}"
 
 SECURE_LOGFILE="${TARGET_DIR}/readme-secure.txt"
 # Redirect stdout ( > ) into a named pipe ( >() ) running "tee"
