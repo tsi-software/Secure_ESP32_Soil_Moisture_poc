@@ -20,8 +20,6 @@ echo "SCRIPT_DIR=$SCRIPT_DIR"
 PRIVATE_DIR=$(realpath "${SCRIPT_DIR}/../../private")
 echo "PRIVATE_DIR=$PRIVATE_DIR"
 
-cd "${SCRIPT_DIR}"
-
 # Read which certificate are to be used.
 source "${PRIVATE_DIR}/active_certificates.vars"
 # e.g.:
@@ -35,6 +33,7 @@ LOG_DIR="${PRIVATE_DIR}/${HOSTNAME}_mosquitto_log"
 echo "CERT_DIR=$CERT_DIR"
 echo "LOG_DIR=$LOG_DIR"
 
+cd "${SCRIPT_DIR}"
 mkdir --parents "${LOG_DIR}"
 set -x
 

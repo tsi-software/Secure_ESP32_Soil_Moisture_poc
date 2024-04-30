@@ -7,4 +7,4 @@ idf_component_register(
 # that fits the partition named 'nvs'. FLASH_IN_PROJECT indicates that
 # the generated image should be flashed when the entire project is flashed to
 # the target with 'idf.py -p PORT flash'.
-nvs_create_partition_image(nvs /project/private/nonvolatile_storage.csv FLASH_IN_PROJECT)
+nvs_create_partition_image(nvs /project/src/main/nonvolatile_storage.csv FLASH_IN_PROJECT)

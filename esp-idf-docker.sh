@@ -18,15 +18,27 @@ echo "$NOW"
 echo "SCRIPT=$SCRIPT"
 echo "SCRIPT_DIR=$SCRIPT_DIR"
 
+PRIVATE_DIR=$(realpath "${SCRIPT_DIR}/private")
+echo "PRIVATE_DIR=$PRIVATE_DIR"
+
+# Read which certificate are to be used.
+source "${PRIVATE_DIR}/active_certificates.vars"
+# e.g.:
+# # Created: 2024-04-28_21-59
+# HOSTNAME=gonzo
+# EXPIRE_DATE=2025-04-28
+# ACTIVE_CERTIFICATES_DIR=gonzo_server_certs_2025-04-28
+
+CERT_DIR="${PRIVATE_DIR}/${ACTIVE_CERTIFICATES_DIR}"
+echo "CERT_DIR=$CERT_DIR"
+
+
 #TODO: auto-recognize the USB device.
-ls -1 --file-type /dev | egrep -i "(acm)|(usb)"
-TTY_DEVICE=ttyACM0
+ls -1 --file-type /dev | egrep -i "(acm)|(ptmx)|(usb)"
+#TTY_DEVICE=ttyACM0
 #TTY_DEVICE=ttyUSB0
 
-#TODO: deprecate NVS_DIR and volume "/project/nvs_src"
-
 SRC_DIR=${SCRIPT_DIR}/top-level-components/secure_esp32_client
-NVS_DIR=${SCRIPT_DIR}/top-level-components/nvs_set_values
 ENV_FILE=${SCRIPT_DIR}/esp-idf-docker_dev.env
 #ENV_FILE=${SCRIPT_DIR}/esp-idf-docker_prod.env
 
@@ -34,12 +46,17 @@ IDF_DOCKER_TAG=release-v5.2
 #IDF_DOCKER_TAG=release-v5.1
 #IDF_DOCKER_TAG=latest
 
+source ${ENV_FILE}
+# e.g.:
+# ESPTOOL_AFTER=no_reset
+# ESPTOOL_CHIP=esp32s3
+# ESPTOOL_PORT=/dev/ttyACM0
+
 set -x
 docker run --rm --interactive --tty \
-  --group-add dialout --device=/dev/${TTY_DEVICE} --env ESPTOOL_PORT=/dev/${TTY_DEVICE} \
+  --group-add dialout --device=${ESPTOOL_PORT} \
   --env-file ${ENV_FILE} \
   --volume ${SRC_DIR}:/project/src \
-  --volume ${NVS_DIR}:/project/nvs_src \
   --volume ${SCRIPT_DIR}/private:/project/private \
   --volume ${SCRIPT_DIR}/tools:/project/tools \
   --workdir /project/src \
