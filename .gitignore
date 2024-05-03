@@ -49,8 +49,6 @@ sdkconfig.*
 
 # Build directory
 build/
-private/
-secure/
 .venv/
 
 # Temporary

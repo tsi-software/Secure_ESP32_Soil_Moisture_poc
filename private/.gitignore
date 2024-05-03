@@ -1,0 +1,6 @@
+# Ignore all sensitive files in this directory ...
+*
+
+# ... except README.txt (and .gitignore)!
+!README.txt
+!.gitignore
