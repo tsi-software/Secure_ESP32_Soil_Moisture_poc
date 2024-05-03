@@ -76,7 +76,10 @@ echo "Expires: $EXPIRE_DATE"
 cat "${SOURCE_VARS_FILE}"
 
 cd "${TARGET_DIR}"
-cp "${SOURCE_VARS_FILE}" ./create_certificates.vars
+cp "${PRIVATE_DIR}/certificate-pass-phrase.txt" "${TARGET_DIR}/"
+cp "${SOURCE_VARS_FILE}" certificate.vars
+echo "EXPIRE_DATE=${EXPIRE_DATE}" >> certificate.vars
+
 set -x
 #-------------------------------------------------------------------------------
 # Create an X509 CA key and certificate for self-signing
@@ -97,36 +100,6 @@ openssl req -new -key mosq_server.key -out mosq_server.csr \
 # Generate the CA signed certificate to use in the MQTT Mosquitto Server
 openssl x509 -req -in mosq_server.csr -CA mosq_ca.crt -CAkey mosq_ca.key -CAcreateserial -out mosq_server.crt \
        ${DAYS_VALID_OPTION} ${PASS_IN_OPTION}
-
-
-#-------------------------------------------------------------------------------
-# Generate the MQTT Client private key
-openssl genrsa -out mosq_client.key 2048
-
-# Generate the MQTT Client self-signed certificate
-openssl req -new -key mosq_client.key -out mosq_client.csr \
-       -subj "${REGION}/O=client.${DOMAIN}/OU=client/CN=${HOSTNAME}/emailAddress=${EMAIL}"
-
-# Generate the CA signed certificate to use in the MQTT Client
-openssl x509 -req -in mosq_client.csr -CA mosq_ca.crt -CAkey mosq_ca.key -CAcreateserial -out mosq_client.crt \
-       ${DAYS_VALID_OPTION} ${PASS_IN_OPTION}
-
-
-#-------------------------------------------------------------------------------
-# Generate the MQTT Android private key
-openssl genrsa -out mosq_android.key 2048
-
-# Generate a certificate signing request to send to the CA.
-openssl req -new -key mosq_android.key -out mosq_android.csr \
-       -subj "${REGION}/O=android.${DOMAIN}/OU=android/CN=${HOSTNAME}/emailAddress=${EMAIL}"
-
-# Sign the CSR with your CA key, or send it to the CA:
-openssl x509 -req -in mosq_android.csr -CA mosq_ca.crt -CAkey mosq_ca.key -CAcreateserial -out mosq_android.crt \
-       ${DAYS_VALID_OPTION} ${PASS_IN_OPTION}
-
-# For Android, create PKCS#12 file (sometimes referred to as PFX files).
-openssl pkcs12 -export -inkey mosq_android.key -in mosq_android.crt -out mosq_android.p12 -name mosq_android \
-       ${PASSWORD_OPTION}
 
 
 #-------------------------------------------------------------------------------
