@@ -70,6 +70,7 @@ PASSWORD_OPTION="-password file:${CERT_DIR}/certificate-pass-phrase.txt"
 echo "PASS_OUT_OPTION=$PASS_OUT_OPTION"
 echo "PASS_IN_OPTION=$PASS_IN_OPTION"
 echo "PASSWORD_OPTION=$PASSWORD_OPTION"
+echo 
 
 
 set -x
@@ -83,6 +84,8 @@ do
     chmod go-rwx "${CLIENT_DIR}"  # Increase the security of the directory just created.
     cd "${CLIENT_DIR}"
 
+    # ... and copy this file here for convenience.
+    cp "${PRIVATE_DIR}/mosq_broker.url" .
 
     #-------------------------------------------------------------------------------
     # Generate the MQTT Client private key
@@ -117,6 +120,7 @@ do
     #-------------------------------------------------------------------------------
     # Increase the security of the files just created
     chmod go-rwx *
+    echo 
 done
 #--------------------------------
 

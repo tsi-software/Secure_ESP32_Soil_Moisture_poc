@@ -60,6 +60,10 @@ echo "HOSTNAME=${HOSTNAME}" >> "${ACTIVE_CERTIFICATES_VARS}"
 echo "EXPIRE_DATE=${EXPIRE_DATE}" >> "${ACTIVE_CERTIFICATES_VARS}"
 echo "ACTIVE_CERTIFICATES_DIR=${ACTIVE_CERTIFICATES_DIR}" >> "${ACTIVE_CERTIFICATES_VARS}"
 
+# Create this file here for convenience.
+# This file may be edited if necessary, but will be overwritten each time this script is run!
+echo "mqtts://${HOSTNAME}:8883" > "${PRIVATE_DIR}/mosq_broker.url"
+
 SECURE_LOGFILE="${TARGET_DIR}/readme-secure.txt"
 # Redirect stdout ( > ) into a named pipe ( >() ) running "tee"
 # see: https://stackoverflow.com/questions/3173131/redirect-copy-of-stdout-to-log-file-from-within-bash-script-itself
