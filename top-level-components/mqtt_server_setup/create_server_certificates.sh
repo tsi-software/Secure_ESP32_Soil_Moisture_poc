@@ -1,5 +1,5 @@
 #!/bin/bash
-# create_certificates.sh
+# create_server_certificates.sh
 #
 # -e  Exit immediately if a command exits with a non-zero status.
 # -u  Treat unset variables as an error when substituting.
@@ -17,7 +17,9 @@ echo "$NOW"
 echo "SCRIPT=$SCRIPT"
 echo "SCRIPT_DIR=$SCRIPT_DIR"
 
+CERTIFICATES_DIR=$(realpath "${SCRIPT_DIR}/../../certificates")
 PRIVATE_DIR=$(realpath "${SCRIPT_DIR}/../../private")
+echo "CERTIFICATES_DIR=$CERTIFICATES_DIR"
 echo "PRIVATE_DIR=$PRIVATE_DIR"
 
 SOURCE_VARS_FILE="${PRIVATE_DIR}/create_certificates.vars"
@@ -44,7 +46,7 @@ fi
 
 ACTIVE_CERTIFICATES_VARS="${PRIVATE_DIR}/active_certificates.vars"
 ACTIVE_CERTIFICATES_DIR=${HOSTNAME}_server_certs_${EXPIRE_DATE}
-TARGET_DIR="${PRIVATE_DIR}/${ACTIVE_CERTIFICATES_DIR}"
+TARGET_DIR="${CERTIFICATES_DIR}/${ACTIVE_CERTIFICATES_DIR}"
 echo "TARGET_DIR=$TARGET_DIR"
 # Must FAIL HARD if the target dir already exists!
 mkdir "${TARGET_DIR}"

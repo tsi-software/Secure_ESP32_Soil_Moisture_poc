@@ -20,7 +20,7 @@ def create_client_uuid(args):
         uuid_filename = Path(args.filename)
 
     if uuid_filename.exists() and not args.force:
-        logger.error('File Exists: {}'.format(str(uuid_filename)))
+        logger.warning('File Exists: {}'.format(str(uuid_filename)))
         return
 
     id = uuid4()
@@ -54,8 +54,8 @@ def main():
     """
     logger.debug('SCRIPT_NAME="%s"', SCRIPT_NAME)
     logger.debug('SCRIPT_PATH="%s"', SCRIPT_PATH)
-    logger.info('DEFAULT_TARGET_PATH="%s"', DEFAULT_TARGET_PATH)
-    logger.info('DEFAULT_FILENAME="%s"', DEFAULT_FILENAME)
+    logger.debug('DEFAULT_TARGET_PATH="%s"', DEFAULT_TARGET_PATH)
+    logger.debug('DEFAULT_FILENAME="%s"', DEFAULT_FILENAME)
 
     args = parse_args()
     create_client_uuid(args)

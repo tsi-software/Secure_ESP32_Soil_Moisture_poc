@@ -1,12 +1,12 @@
 key,type,encoding,value
 global,namespace,,
-app_uuid,file,string,/project/private/uuid4.txt
+app_uuid,file,string,/project/private/client_id.uuid4
 sntp_server,data,string,pool.ntp.org
 wifi,namespace,,
 ssid,file,string,/project/private/wifi_ssid.txt
 password,file,string,/project/private/wifi_password.txt
 mqtt,namespace,,
-broker_url,file,string,/project/private/mosq_broker.url
-ca_cert,file,binary,/project/private/mosq_ca.crt
-client_cert,file,binary,/project/private/mosq_client.crt
-client_key,file,binary,/project/private/mosq_client.key
+broker_url,file,string,/project/certificates/mosq_broker.url
+ca_cert,file,binary,/project/certificates/mosq_ca.crt
+client_cert,file,binary,/project/certificates/mosq_client.crt
+client_key,file,binary,/project/certificates/mosq_client.key

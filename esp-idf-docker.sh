@@ -29,7 +29,7 @@ source "${PRIVATE_DIR}/active_certificates.vars"
 # EXPIRE_DATE=2025-04-28
 # ACTIVE_CERTIFICATES_DIR=gonzo_server_certs_2025-04-28
 
-CERT_DIR="${PRIVATE_DIR}/${ACTIVE_CERTIFICATES_DIR}"
+CERT_DIR=$(realpath "${SCRIPT_DIR}/certificates/${ACTIVE_CERTIFICATES_DIR}")
 echo "CERT_DIR=$CERT_DIR"
 
 #TODO: auto-recognize the USB device.
@@ -56,7 +56,8 @@ docker run --rm --interactive --tty \
   --group-add dialout --device=${ESPTOOL_PORT} \
   --env-file ${ENV_FILE} \
   --volume ${SRC_DIR}:/project/src \
-  --volume ${SCRIPT_DIR}/private:/project/private \
+  --volume ${CERT_DIR}:/project/certificates \
+  --volume ${PRIVATE_DIR}:/project/private \
   --volume ${SCRIPT_DIR}/tools:/project/tools \
   --workdir /project/src \
   soil-moisture-esp-idf:latest

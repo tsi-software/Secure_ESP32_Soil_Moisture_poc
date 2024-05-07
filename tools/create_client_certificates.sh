@@ -1,5 +1,5 @@
 #!/bin/bash
-# create_certificates.sh
+# create_client_certificates.sh
 #
 # -e  Exit immediately if a command exits with a non-zero status.
 # -u  Treat unset variables as an error when substituting.
@@ -21,11 +21,14 @@ echo "SCRIPT_DIR=$SCRIPT_DIR"
 if [ -d "${SCRIPT_DIR}/../private" ]; then
     # We are currently running inside of the esp-idf Docker shell.
     PRIVATE_DIR=$(realpath "${SCRIPT_DIR}/../private")
+    CERTS_BASE_DIR=$(realpath "${SCRIPT_DIR}/../certificates")
 else
     # We are currently running inside of a normal bash shell.
     PRIVATE_DIR=$(realpath "${SCRIPT_DIR}/../../private")
+    CERTS_BASE_DIR=$(realpath "${SCRIPT_DIR}/../../certificates")
 fi
 echo "PRIVATE_DIR=$PRIVATE_DIR"
+echo "CERTS_BASE_DIR=$CERTS_BASE_DIR"
 
 
 # Read which certificate are to be used.
@@ -36,7 +39,7 @@ source "${PRIVATE_DIR}/active_certificates.vars"
 # EXPIRE_DATE=2025-04-28
 # ACTIVE_CERTIFICATES_DIR=gonzo_server_certs_2025-04-28
 
-CERT_DIR="${PRIVATE_DIR}/${ACTIVE_CERTIFICATES_DIR}"
+CERT_DIR="${CERTS_BASE_DIR}/${ACTIVE_CERTIFICATES_DIR}"
 echo "CERT_DIR=$CERT_DIR"
 
 source "${CERT_DIR}/certificate.vars"
@@ -116,3 +119,5 @@ do
     chmod go-rwx *
 done
 #--------------------------------
+
+echo "Done."

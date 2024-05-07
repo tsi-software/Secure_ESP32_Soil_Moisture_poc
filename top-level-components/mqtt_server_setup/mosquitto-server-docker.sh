@@ -17,7 +17,9 @@ echo "$NOW"
 echo "SCRIPT=$SCRIPT"
 echo "SCRIPT_DIR=$SCRIPT_DIR"
 
+CERTS_BASE_DIR=$(realpath "${SCRIPT_DIR}/../../certificates")
 PRIVATE_DIR=$(realpath "${SCRIPT_DIR}/../../private")
+echo "CERTS_BASE_DIR=$CERTS_BASE_DIR"
 echo "PRIVATE_DIR=$PRIVATE_DIR"
 
 # Read which certificate are to be used.
@@ -28,7 +30,7 @@ source "${PRIVATE_DIR}/active_certificates.vars"
 # EXPIRE_DATE=2025-04-28
 # ACTIVE_CERTIFICATES_DIR=gonzo_server_certs_2025-04-28
 
-CERT_DIR="${PRIVATE_DIR}/${ACTIVE_CERTIFICATES_DIR}"
+CERT_DIR="${CERTS_BASE_DIR}/${ACTIVE_CERTIFICATES_DIR}"
 LOG_DIR="${PRIVATE_DIR}/${HOSTNAME}_mosquitto_log"
 echo "CERT_DIR=$CERT_DIR"
 echo "LOG_DIR=$LOG_DIR"
