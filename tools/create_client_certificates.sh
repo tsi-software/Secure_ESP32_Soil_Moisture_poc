@@ -74,6 +74,9 @@ echo
 
 
 set -x
+# Generate client_id.uuid4, if it does not already exist.
+python3 "${SCRIPT_DIR}/create_client_uuid.py" --filename "${CERT_DIR}/client_id.uuid4"
+
 #--------------------------------
 # Create 2 sets of certificates for the client to allow seamless certificate rotation.
 for ClientIndex in 'a' 'b' ;

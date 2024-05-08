@@ -1,6 +1,6 @@
 key,type,encoding,value
 global,namespace,,
-app_uuid,file,string,/project/private/client_id.uuid4
+app_uuid,file,string,/project/certificates/client_id.uuid4
 sntp_server,data,string,pool.ntp.org
 wifi,namespace,,
 ssid,file,string,/project/private/wifi_ssid.txt
