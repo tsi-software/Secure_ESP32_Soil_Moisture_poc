@@ -84,8 +84,9 @@ do
     chmod go-rwx "${CLIENT_DIR}"  # Increase the security of the directory just created.
     cd "${CLIENT_DIR}"
 
+    #DEPRECATED.
     # ... and copy this file here for convenience.
-    cp "${PRIVATE_DIR}/mosq_broker.url" .
+    #cp "${PRIVATE_DIR}/mosq_broker.url" .
 
     #-------------------------------------------------------------------------------
     # Generate the MQTT Client private key

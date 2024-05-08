@@ -8,5 +8,5 @@ password,file,string,/project/private/wifi_password.txt
 mqtt,namespace,,
 broker_url,file,string,/project/certificates/mosq_broker.url
 ca_cert,file,binary,/project/certificates/mosq_ca.crt
-client_cert,file,binary,/project/certificates/mosq_client.crt
-client_key,file,binary,/project/certificates/mosq_client.key
+client_cert,file,binary,/project/certificates/client_a/mosq_client.crt
+client_key,file,binary,/project/certificates/client_a/mosq_client.key

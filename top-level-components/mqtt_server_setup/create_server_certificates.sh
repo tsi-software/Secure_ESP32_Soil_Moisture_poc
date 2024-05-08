@@ -62,7 +62,7 @@ echo "ACTIVE_CERTIFICATES_DIR=${ACTIVE_CERTIFICATES_DIR}" >> "${ACTIVE_CERTIFICA
 
 # Create this file here for convenience.
 # This file may be edited if necessary, but will be overwritten each time this script is run!
-echo "mqtts://${HOSTNAME}:8883" > "${PRIVATE_DIR}/mosq_broker.url"
+echo "mqtts://${HOSTNAME}:8883" > "${TARGET_DIR}/mosq_broker.url"
 
 SECURE_LOGFILE="${TARGET_DIR}/readme-secure.txt"
 # Redirect stdout ( > ) into a named pipe ( >() ) running "tee"
