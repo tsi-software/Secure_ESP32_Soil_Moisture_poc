@@ -51,7 +51,7 @@ DEVICE_ID=eeef653a-3964-4aa9-9b6a-26070c6baa29
 CONFIG_MSG="x=123
 y=456"
 mosquitto_pub --debug --host ${MQTT_HOST} --port 8883 \
- --cafile ${CERT_PATH}/../mosq_ca.crt --cert ${CERT_PATH}/mosq_client.crt --key ${CERT_PATH}/mosq_client.key \
+ --cafile ${CERT_PATH}/mosq_ca.crt --cert ${CERT_PATH}/client_a/mosq_client.crt --key ${CERT_PATH}/client_a/mosq_client.key \
  -t "soilmoisture/${DEVICE_ID}/touchpad/config" -m "${CONFIG_MSG}"
 # --property PUBLISH user-property SIGNED 1234
 

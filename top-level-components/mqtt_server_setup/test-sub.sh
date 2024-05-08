@@ -44,7 +44,7 @@ set -x
 
 mosquitto_sub --verbose \
   --host ${MQTT_HOST} --port 8883 \
-  --cafile ${CERT_PATH}/../mosq_ca.crt --cert ${CERT_PATH}/mosq_client.crt --key ${CERT_PATH}/mosq_client.key \
+  --cafile ${CERT_PATH}/mosq_ca.crt --cert ${CERT_PATH}/client_a/mosq_client.crt --key ${CERT_PATH}/client_a/mosq_client.key \
   --topic '#'
 
 # mosquitto_sub --verbose \
