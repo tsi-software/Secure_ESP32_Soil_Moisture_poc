@@ -165,57 +165,6 @@ static void app_timer_tick_handler(void* handler_args, esp_event_base_t base, in
 static void touch_filter_callback(uint16_t *raw_values, uint16_t *filtered_values)
 {
     post_touch_values_u16(filtered_values);
-
-    /**** TODO: clean-up commented-out code
-
-    // It's important to grab the current time at the top of the callback function.
-    time_t now = 0;
-    time(&now);
-
-    ESP_LOGV(LOG_TAG, "touch_filter_callback");
-
-    // Just incase force_update is changed while we are processing below.
-    const bool local_force_update = force_update;
-    force_update = false;
-
-    uint16_t prior_value, new_value, diff;
-    for (int ndx = FIRST_TOUCH_PAD_INDEX; ndx < TOUCH_PAD_MAX; ++ndx) {
-        prior_value = prior_touch_value[ndx];
-        new_value = filtered_values[ndx];
-        diff = prior_value > new_value ? prior_value - new_value : new_value - prior_value;
-        if (local_force_update || diff > UPDATE_THRESHOLD_VALUE) {
-            prior_touch_value[ndx] = new_value;
-            ESP_LOGD(LOG_TAG, "touch - [%d] %u (diff=%u)", ndx, new_value, diff);
-
-            app_touch_value_change_event_payload payload = {
-                .utc_timestamp = now,
-                .touch_pad_num = ndx,
-                .touch_value = new_value
-            };
-            esp_err_t err = esp_event_post_to(
-                    event_loop_handle,
-                    APP_TOUCH_EVENTS, APP_TOUCH_VALUE_CHANGE_EVENT,
-                    &payload, sizeof(payload),
-                    MEASUREMENT_DURATION_MSEC / portTICK_PERIOD_MS
-            );
-            switch(err) {
-            case ESP_OK:
-                // All is well
-                break;
-            case ESP_ERR_TIMEOUT:
-                // Ignore and try again next time.
-                ESP_LOGW(LOG_TAG, "APP_TOUCH_VALUE_CHANGE_EVENT timed-out! Ignoring and trying again.");
-                prior_touch_value[ndx] = 0;
-                // ?? force_update = true; ??
-                break;
-            default:
-                ESP_ERROR_CHECK(err);
-                break;
-            }
-        }
-    }
-
-    ****/
 }
 #endif
 
@@ -353,40 +302,3 @@ void app_read_touch_pads_init(esp_event_loop_handle_t event_loop)
     // TODO: usStackDepth should be better fine tuned.
     xTaskCreate(read_touch_pads_init_task, "read_touch_pads_init", 2048, NULL, uxTaskPriorityGet(NULL), NULL);
 }
-
-
-
-/***
-static void test1()
-{
-    {
-        // The clock cycles of each measurement.
-        //esp_err_t touch_pad_get_measurement_clock_cycles(uint16_t *clock_cycle)
-        //esp_err_t touch_pad_set_measurement_clock_cycles(uint16_t clock_cycle)
-
-        // The sleep cycles between two mesurements.
-        //esp_err_t touch_pad_get_measurement_interval(uint16_t *interval_cycle)
-        //esp_err_t touch_pad_set_measurement_interval(uint16_t interval_cycle)
-
-        // Touch pad filter calibration period, in ms.
-        //esp_err_t touch_pad_get_filter_period(uint32_t *p_period_ms)
-        //esp_err_t touch_pad_set_filter_period(uint32_t new_period_ms)
-
-        // Touch sensor charge/discharge speed for each pad.
-        //esp_err_t touch_pad_get_cnt_mode(touch_pad_t touch_num, touch_cnt_slope_t *slope, touch_tie_opt_t *opt)
-        //esp_err_t touch_pad_set_cnt_mode(touch_pad_t touch_num, touch_cnt_slope_t slope, touch_tie_opt_t opt)
-
-        esp_err_t err;
-        uint16_t sleep_cycle, meas_cycle;
-        uint32_t filter_period_ms;
-        err = touch_pad_get_measurement_clock_cycles(&meas_cycle);
-        err = touch_pad_get_measurement_interval(&sleep_cycle);
-        err = touch_pad_get_filter_period(&filter_period_ms);
-
-        // e.g. meas_cycle=32767, sleep_cycle=4096, filter_period_ms=0 ms
-        ESP_LOGI(LOG_TAG, "meas_cycle=%d, sleep_cycle=%d, filter_period_ms=%ld ms",
-                 meas_cycle, sleep_cycle, filter_period_ms
-        );
-    }
-}
-***/
