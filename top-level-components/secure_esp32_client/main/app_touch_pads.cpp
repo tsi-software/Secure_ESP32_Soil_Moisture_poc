@@ -1,5 +1,5 @@
 /*
-app_touch_pads.c
+app_touch_pads.cpp
 */
 
 #include "freertos/FreeRTOS.h"
@@ -55,9 +55,9 @@ static bool force_update = true;
 static esp_event_loop_handle_t event_loop_handle = NULL;
 
 
-/* TODO: ???
-see: github/espressif/esp-idf/components/hal/include/hal/touch_sensor_types.h
-static const touch_pad_t button[TOUCH_BUTTON_NUM] = {
+// see: github/espressif/esp-idf/components/hal/include/hal/touch_sensor_types.h
+static const touch_pad_t TOUCH_PAD[] = {
+    TOUCH_PAD_NUM0,
     TOUCH_PAD_NUM1,
     TOUCH_PAD_NUM2,
     TOUCH_PAD_NUM3,
@@ -67,13 +67,14 @@ static const touch_pad_t button[TOUCH_BUTTON_NUM] = {
     TOUCH_PAD_NUM7,
     TOUCH_PAD_NUM8,
     TOUCH_PAD_NUM9,
+#if SOC_TOUCH_SENSOR_NUM > 10
     TOUCH_PAD_NUM10,
     TOUCH_PAD_NUM11,
     TOUCH_PAD_NUM12,
     TOUCH_PAD_NUM13,
     TOUCH_PAD_NUM14
+#endif
 };
-*/
 
 
 
@@ -90,7 +91,7 @@ static void post_touch_values_u32(uint32_t *touch_values)
     force_update = false;
 
     uint16_t prior_value, new_value, diff;
-    for (int ndx = FIRST_TOUCH_PAD_INDEX; ndx < TOUCH_PAD_MAX; ++ndx) {
+    for (uint8_t ndx = FIRST_TOUCH_PAD_INDEX; ndx < TOUCH_PAD_MAX; ++ndx) {
         prior_value = prior_touch_value[ndx];
         new_value = touch_values[ndx];
         diff = prior_value > new_value ? prior_value - new_value : new_value - prior_value;
@@ -98,11 +99,16 @@ static void post_touch_values_u32(uint32_t *touch_values)
             prior_touch_value[ndx] = new_value;
             ESP_LOGD(LOG_TAG, "touch - [%d] %u (diff=%u)", ndx, new_value, diff);
 
-            app_touch_value_change_event_payload payload = {
-                .utc_timestamp = now,
-                .touch_pad_num = ndx,
-                .touch_value = new_value
-            };
+            app_touch_value_change_event_payload payload = {};
+            payload.utc_timestamp = now;
+            payload.touch_pad_num = ndx;
+            payload.touch_value = new_value;
+            //TODO: clean-up commented-out code.
+            // app_touch_value_change_event_payload payload = {
+            //     .utc_timestamp = now,
+            //     .touch_pad_num = ndx,
+            //     .touch_value = new_value
+            // };
             esp_err_t err = esp_event_post_to(
                     event_loop_handle,
                     APP_TOUCH_EVENTS, APP_TOUCH_VALUE_CHANGE_EVENT,
@@ -145,13 +151,13 @@ static void post_touch_values_u16(uint16_t *touch_values_u16)
 static void app_timer_tick_handler(void* handler_args, esp_event_base_t base, int32_t id, void* event_data)
 {
     uint32_t touch_values[TOUCH_PAD_MAX];
-    for (int ndx = FIRST_TOUCH_PAD_INDEX; ndx < TOUCH_PAD_MAX; ++ndx) {
+    for (uint8_t ndx = FIRST_TOUCH_PAD_INDEX; ndx < TOUCH_PAD_MAX; ++ndx) {
 #if defined(TOUCH_VALUE_16_BIT)
         uint16_t tmp_u16;
         touch_pad_read_filtered(ndx, &tmp_u16);
         touch_values[ndx] = tmp_u16;
 #elif defined(TOUCH_VALUE_32_BIT)
-        touch_pad_filter_read_smooth(ndx, &touch_values[ndx]);
+        touch_pad_filter_read_smooth(TOUCH_PAD[ndx], &touch_values[ndx]);
 #endif
     }
 
@@ -281,8 +287,8 @@ static void read_touch_pads_init_task(void *pvParameters)
     //esp_err_t touch_pad_set_voltage(touch_high_volt_t refh, touch_low_volt_t refl, touch_volt_atten_t atten)
     // touch_pad_set_voltage(TOUCH_HVOLT_2V7, TOUCH_LVOLT_0V5, TOUCH_HVOLT_ATTEN_1V);
 
-    for (int i = 0; i < TOUCH_PAD_MAX; i++) {
-        TOUCH_PAD_CONFIG(i, TOUCH_THRESH_NO_USE);
+    for (uint8_t ndx = 0; ndx < TOUCH_PAD_MAX; ++ndx) {
+        TOUCH_PAD_CONFIG(TOUCH_PAD[ndx], TOUCH_THRESH_NO_USE);
     }
 
     // This must be done last.
