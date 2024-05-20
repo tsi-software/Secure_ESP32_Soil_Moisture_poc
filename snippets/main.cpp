@@ -10,7 +10,8 @@
 //#include <utility>
 using namespace std;
 
-#include "emulated_system_calls.hpp" 
+#include "emulated_system_calls.hpp"
+#include "fast_array_average.hpp"
 #include "lightweight_1p1c_queue.hpp"
 
 
@@ -175,10 +176,9 @@ void consumer(TaskHandle_t taskControlBlock, LightweightQueue &test1_queue)
 
 
 
-int main()
+int test_lightweight_queue()
 {
-    cout << "Run Snippet Tests." << endl;
-    //test_lightweight_1p1c_queue();
+    cout << "Starting test_lightweight_queue()." << endl;
 
     // The producer starts with 'QUEUE_SIZE' elements available that can be pushed onto the queue.
     struct tskTaskControlBlock producerTask(0, "Producer"); //(QUEUE_SIZE);
@@ -201,7 +201,63 @@ int main()
     }
     producer_thread.join();
     consumer_thread.join();
-    cout << "Threads completed." << endl;
+    cout << "Queue Threads completed." << endl;
+
+    return 0;
+}
+
+
+
+int test_fast_array_average()
+{
+    cout << endl << "Starting test_fast_array_average()." << endl;
+
+    using LongAverageTest = FastArrayAverage<long, long long, 3>;
+    using UShortAverageTest = FastArrayAverage<unsigned short, unsigned long, 3>;
+
+    cout << "LongAverageTest" << endl;
+    LongAverageTest long_avg(3);
+    LongAverageTest::ValueArrayType long_sample_values, long_average_values;
+    for (int count = 0; count <= 9; ++count) {
+        long_sample_values[0] = 1;
+        long_sample_values[1] = -count;
+        long_sample_values[2] = count * 10;
+        long_avg.add_array_values(long_sample_values);
+        long_avg.debug_stream(cout);
+
+        long_avg.get_average_values(long_average_values);
+        cout << endl;
+    }
+    cout << endl;
+
+    cout << "UShortAverageTest" << endl;
+    UShortAverageTest ushort_avg(3);
+    UShortAverageTest::ValueArrayType ushort_sample_values, ushort_average_values;
+    for (int count = 0; count <= 9; ++count) {
+        ushort_sample_values[0] = 1;
+        ushort_sample_values[1] = count;
+        ushort_sample_values[2] = count * 10;
+        ushort_avg.add_array_values(ushort_sample_values);
+        ushort_avg.debug_stream(cout);
+
+        ushort_avg.get_average_values(ushort_average_values);
+        cout << endl;
+    }
+    cout << endl;
+
+    cout << "Finished test_fast_array_average()." << endl << endl;
+    return 0;
+}
+
+
+
+int main()
+{
+    cout << "Run Snippet Tests." << endl;
+
+    //test_lightweight_1p1c_queue();
+    //test_lightweight_queue();
+    test_fast_array_average();
 
     return 0;
 }

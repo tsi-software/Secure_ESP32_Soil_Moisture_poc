@@ -103,12 +103,7 @@ static void post_touch_values_u32(uint32_t *touch_values)
             payload.utc_timestamp = now;
             payload.touch_pad_num = ndx;
             payload.touch_value = new_value;
-            //TODO: clean-up commented-out code.
-            // app_touch_value_change_event_payload payload = {
-            //     .utc_timestamp = now,
-            //     .touch_pad_num = ndx,
-            //     .touch_value = new_value
-            // };
+
             esp_err_t err = esp_event_post_to(
                     event_loop_handle,
                     APP_TOUCH_EVENTS, APP_TOUCH_VALUE_CHANGE_EVENT,
