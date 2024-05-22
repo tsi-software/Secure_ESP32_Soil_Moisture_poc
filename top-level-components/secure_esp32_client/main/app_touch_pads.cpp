@@ -10,6 +10,7 @@ app_touch_pads.cpp
 
 #include "app_timer.h"
 #include "app_touch_pads.h"
+#include "fast_array_average.hpp"
 
 
 // Touch num 0 is denoise channel, please use `touch_pad_denoise_enable` to set denoise function.
@@ -49,14 +50,33 @@ ESP_EVENT_DEFINE_BASE(APP_TOUCH_EVENTS);
 
 static const char* LOG_TAG = "app_touch_pads";
 
-static uint16_t prior_touch_value[TOUCH_PAD_MAX];
+
+/****
+TODO: document...
+
+TouchValue_t:
+
+TouchValuesAverage_t:
+
+****/
+#if defined(TOUCH_VALUE_16_BIT)
+  using TouchValue_t = uint16_t;
+  using TouchValuesAverage_t = FastArrayAverage<TouchValue_t, uint32_t, TOUCH_PAD_MAX>;
+#elif defined(TOUCH_VALUE_32_BIT)
+  using TouchValue_t = uint32_t;
+  using TouchValuesAverage_t = FastArrayAverage<TouchValue_t, uint64_t, TOUCH_PAD_MAX>;
+#endif
+
+
+static TouchValuesAverage_t touchValuesAverage(5); // 2^5 = 32 (average over 32 samples)
+static TouchValue_t prior_touch_value[TOUCH_PAD_MAX];
 static bool force_update = true;
 
 static esp_event_loop_handle_t event_loop_handle = NULL;
 
 
 // see: github/espressif/esp-idf/components/hal/include/hal/touch_sensor_types.h
-static const touch_pad_t TOUCH_PAD[] = {
+static const touch_pad_t TOUCH_PAD[ TOUCH_PAD_MAX ] = {
     TOUCH_PAD_NUM0,
     TOUCH_PAD_NUM1,
     TOUCH_PAD_NUM2,
@@ -131,13 +151,39 @@ static void post_touch_values_u32(uint32_t *touch_values)
 
 
 // Convert the uint16_t array to a uint32_t array.
-static void post_touch_values_u16(uint16_t *touch_values_u16)
+// static void post_touch_values_u16(uint16_t *touch_values_u16)
+// {
+//     uint32_t touch_values_u32[TOUCH_PAD_MAX];
+//     for (int ndx = 0; ndx < TOUCH_PAD_MAX; ++ndx) {
+//         touch_values_u32[ndx] = touch_values_u16[ndx];
+//     }
+//     post_touch_values_u32(touch_values_u32);
+// }
+
+
+
+static void handle_touch_values_u32(uint32_t *touch_values)
+{
+    ESP_LOGV(LOG_TAG, "handle_touch_values");
+    touchValuesAverage.add_array_values(touch_values);
+
+    if (touchValuesAverage.is_average_ready()) {
+        TouchValuesAverage_t::ValueArrayType average_values;
+        touchValuesAverage.get_average_values(average_values);
+        post_touch_values_u32(average_values);
+    }
+}
+
+
+
+// Convert the uint16_t array to a uint32_t array.
+static void handle_touch_values_u16(uint16_t *touch_values_u16)
 {
     uint32_t touch_values_u32[TOUCH_PAD_MAX];
     for (int ndx = 0; ndx < TOUCH_PAD_MAX; ++ndx) {
         touch_values_u32[ndx] = touch_values_u16[ndx];
     }
-    post_touch_values_u32(touch_values_u32);
+    handle_touch_values_u32(touch_values_u32);
 }
 
 
@@ -152,11 +198,13 @@ static void app_timer_tick_handler(void* handler_args, esp_event_base_t base, in
         touch_pad_read_filtered(ndx, &tmp_u16);
         touch_values[ndx] = tmp_u16;
 #elif defined(TOUCH_VALUE_32_BIT)
-        touch_pad_filter_read_smooth(TOUCH_PAD[ndx], &touch_values[ndx]);
+        uint32_t tmp_u32;
+        touch_pad_filter_read_smooth(TOUCH_PAD[ndx], &tmp_u32);
+        touch_values[ndx] = tmp_u32;
 #endif
     }
 
-    post_touch_values_u32(touch_values);
+    handle_touch_values_u32(touch_values);
 }
 #endif
 
@@ -165,7 +213,7 @@ static void app_timer_tick_handler(void* handler_args, esp_event_base_t base, in
 #ifdef USE_TOUCH_FILTER_CALLBACK
 static void touch_filter_callback(uint16_t *raw_values, uint16_t *filtered_values)
 {
-    post_touch_values_u16(filtered_values);
+    handle_touch_values_u16(filtered_values);
 }
 #endif
 

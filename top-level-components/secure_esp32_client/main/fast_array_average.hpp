@@ -100,7 +100,8 @@ public:
     }
 
 
-    void debug_stream(ostream &stream) {
+#ifdef DEBUG
+    void debug_stream(std::ostream &stream) {
         stream << "array_sample_count:" << array_sample_count
                << ", number_of_bits: " << number_of_bits
                << ", sample_size: " << sample_size
@@ -131,6 +132,7 @@ public:
             stream << "* average not yet ready." << std::endl;
         }
     }
+#endif
 
 
 private:

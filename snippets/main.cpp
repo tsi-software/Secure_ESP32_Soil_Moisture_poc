@@ -1,5 +1,9 @@
 // main.cpp
 
+#ifndef DEBUG
+#define DEBUG
+#endif
+
 #include <chrono>
 #include <iostream>
 #include <fstream>
@@ -8,7 +12,6 @@
 #include <sstream>
 #include <thread>
 //#include <utility>
-using namespace std;
 
 #include "emulated_system_calls.hpp"
 #include "fast_array_average.hpp"
@@ -17,6 +20,9 @@ using namespace std;
 
 // Mutex to locally protect std::cout << ...
 std::mutex cout_mutex;
+
+using namespace std;
+
 
 
 long random_delay(int max_milliseconds)
