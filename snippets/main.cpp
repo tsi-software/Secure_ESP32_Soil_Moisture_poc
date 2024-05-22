@@ -5,11 +5,12 @@
 #endif
 
 #include <chrono>
-#include <iostream>
 #include <fstream>
+#include <iostream>
 #include <mutex>
 #include <random>
 #include <sstream>
+#include <stdexcept>
 #include <thread>
 //#include <utility>
 
@@ -228,10 +229,37 @@ int test_fast_array_average()
         long_sample_values[0] = 1;
         long_sample_values[1] = -count;
         long_sample_values[2] = count * 10;
-        long_avg.add_array_values(long_sample_values);
+        long_avg.add_values(long_sample_values);
         long_avg.debug_stream(cout);
 
+        bool is_ready = long_avg.is_average_ready();
         long_avg.get_average_values(long_average_values);
+        if (is_ready) {
+            cout << "LongAverageTest get_average_values(...):" << endl;
+            int index;
+            stringstream stream;
+            LongAverageTest::ValueType expected, actual;
+            LongAverageTest::ValueType expectedValues[] = {1, -3, 35};
+
+            for (index = 0; index < long_avg.array_size; ++index) {
+                expected = expectedValues[index];
+                actual = long_average_values[index];
+                if (actual != expected) {
+                    stream << endl
+                           << "index " << index
+                           << ": expected=" << expected
+                           << ", actual=" << actual
+                           ;
+                }
+            }
+
+            if (stream.str().empty()) {
+                cout << "OK" << endl;
+            } else {
+                string msg = "LongAverageTest get_average_values(...): " + stream.str();
+                throw std::runtime_error(msg);
+            }
+        }
         cout << endl;
     }
     cout << endl;
@@ -243,10 +271,37 @@ int test_fast_array_average()
         ushort_sample_values[0] = 1;
         ushort_sample_values[1] = count;
         ushort_sample_values[2] = count * 10;
-        ushort_avg.add_array_values(ushort_sample_values);
+        ushort_avg.add_values(ushort_sample_values);
         ushort_avg.debug_stream(cout);
 
+        bool is_ready = ushort_avg.is_average_ready();
         ushort_avg.get_average_values(ushort_average_values);
+        if (is_ready) {
+            cout << "UShortAverageTest get_average_values(...):" << endl;
+            int index;
+            stringstream stream;
+            UShortAverageTest::ValueType expected, actual;
+            UShortAverageTest::ValueType expectedValues[] = {1, 3, 35};
+
+            for (index = 0; index < ushort_avg.array_size; ++index) {
+                expected = expectedValues[index];
+                actual = ushort_average_values[index];
+                if (actual != expected) {
+                    stream << endl
+                           << "index " << index
+                           << ": expected=" << expected
+                           << ", actual=" << actual
+                           ;
+                }
+            }
+
+            if (stream.str().empty()) {
+                cout << "OK" << endl;
+            } else {
+                string msg = "UShortAverageTest get_average_values(...): " + stream.str();
+                throw std::runtime_error(msg);
+            }
+        }
         cout << endl;
     }
     cout << endl;

@@ -3,16 +3,17 @@
 #ifndef _FAST_ARRAY_AVERAGE_HPP_
 #define _FAST_ARRAY_AVERAGE_HPP_
 
+#include <array>
 #include <ostream>
 
 
 
-template<class T, class S, unsigned array_size>
+template<class T, class S, std::size_t array_size_>
 class FastArrayAverage {
 public:
     using AccumulatorType = S;
     using ValueType = T;
-    using ValueArrayType = T[array_size];
+    using ValueArrayType = std::array<T, array_size_>;
 
     /*
     # of bits   value (2^n)
@@ -29,15 +30,14 @@ public:
        10       1024
     **/
 
-    //TODO:...
-    //const unsigned array_size = array_size_;
+    static const std::size_t array_size = array_size_;
     const unsigned number_of_bits;
     const unsigned sample_size;
 
 
     FastArrayAverage(unsigned number_of_bits) :
         number_of_bits(number_of_bits),
-        sample_size(1 << number_of_bits)
+        sample_size(1 << number_of_bits) //TODO: EXPLAIN!
     {
         //TODO: number_of_bits > 0 and number_of_bits < 2^(sizeof(S))
         reset();
@@ -45,25 +45,36 @@ public:
 
 
     void reset() {
-        for (unsigned index = 0; index < array_size; ++index) {
-            accumulator[index] = 0;
+        // for (std::size_t index = 0; index < array_size; ++index) {
+        //     accumulator[index] = 0;
+        // }
+        for (auto &value : accumulator) {
+            value = 0;
         }
-        array_sample_count = 0; // Reset the sample count.
+        array_sample_count = 0;
+    }
+
+
+    void add_values(const ValueArrayType& values) {
+        for (std::size_t index = 0; index < array_size; ++index) {
+            accumulator[index] += values[index];
+        }
+        ++array_sample_count;
     }
 
 
     // 'array_values' must be an array of size 'array_size'!
-    void add_array_values(ValueType *array_values) {
-        if (array_sample_count >= sample_size) {
-            //TODO: throw an error.
-            return;
-        }
-
-        for (unsigned index = 0; index < array_size; ++index) {
-            accumulator[index] += array_values[index];
-        }
-        ++array_sample_count;
-    }
+    // void add_array_values(ValueType *array_values) {
+    //     if (array_sample_count >= sample_size) {
+    //         //TODO: throw an error.
+    //         return;
+    //     }
+    //
+    //     for (std::size_t index = 0; index < array_size; ++index) {
+    //         accumulator[index] += array_values[index];
+    //     }
+    //     ++array_sample_count;
+    // }
 
 
     bool is_average_ready() {
@@ -72,16 +83,16 @@ public:
 
 
     // 'result' must be an array of size 'array_size'!
-    void get_average_values(ValueType *result) {
+    void get_average_values(ValueArrayType& result) {
         if (!is_average_ready()) {
             //TODO: log a warning message that the average values cannot yet be computed.
-            for (unsigned index = 0; index < array_size; ++index) {
-                result[index] = 0;
+            for (auto &rslt : result) {
+                rslt = 0;
             }
             return;
         }
 
-        for (unsigned index = 0; index < array_size; ++index) {
+        for (std::size_t index = 0; index < array_size; ++index) {
 
             //TODO:...
             // if (std::is_unsigned<AccumulatorType>::value) {
@@ -107,7 +118,7 @@ public:
                << ", sample_size: " << sample_size
                << std::endl;
         stream << "Accumulator:" << std::endl;
-        for (unsigned index = 0; index < array_size; ++index) {
+        for (std::size_t index = 0; index < array_size; ++index) {
             if (index != 0) {
                 stream << ", ";
             }
@@ -117,7 +128,7 @@ public:
 
         if (is_average_ready()) {
             stream << "AVERAGE:" << std::endl;
-            for (unsigned index = 0; index < array_size; ++index) {
+            for (std::size_t index = 0; index < array_size; ++index) {
                 if (index != 0) {
                     stream << ", ";
                 }
@@ -137,7 +148,8 @@ public:
 
 private:
     unsigned array_sample_count = 0;
-    AccumulatorType accumulator[array_size];
+    //AccumulatorType accumulator[array_size];
+    std::array<AccumulatorType, array_size> accumulator;
 };
 
 
