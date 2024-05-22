@@ -98,7 +98,7 @@ static const touch_pad_t TOUCH_PAD[ TOUCH_PAD_MAX ] = {
 
 
 
-static void post_touch_values_u32(uint32_t *touch_values)
+static void post_touch_values(TouchValuesAverage_t::ValueArrayType& touch_values)
 {
     // It's important to grab the current time at the top of this function.
     time_t now = 0;
@@ -110,7 +110,8 @@ static void post_touch_values_u32(uint32_t *touch_values)
     const bool local_force_update = force_update;
     force_update = false;
 
-    uint16_t prior_value, new_value, diff;
+    TouchValue_t prior_value, new_value, diff;
+
     for (uint8_t ndx = FIRST_TOUCH_PAD_INDEX; ndx < TOUCH_PAD_MAX; ++ndx) {
         prior_value = prior_touch_value[ndx];
         new_value = touch_values[ndx];
@@ -150,40 +151,16 @@ static void post_touch_values_u32(uint32_t *touch_values)
 
 
 
-// Convert the uint16_t array to a uint32_t array.
-// static void post_touch_values_u16(uint16_t *touch_values_u16)
-// {
-//     uint32_t touch_values_u32[TOUCH_PAD_MAX];
-//     for (int ndx = 0; ndx < TOUCH_PAD_MAX; ++ndx) {
-//         touch_values_u32[ndx] = touch_values_u16[ndx];
-//     }
-//     post_touch_values_u32(touch_values_u32);
-// }
-
-
-
-static void handle_touch_values_u32(uint32_t *touch_values)
+static void handle_touch_values(TouchValuesAverage_t::ValueArrayType& touch_values)
 {
     ESP_LOGV(LOG_TAG, "handle_touch_values");
-    touchValuesAverage.add_array_values(touch_values);
+    touchValuesAverage.add_values(touch_values);
 
     if (touchValuesAverage.is_average_ready()) {
         TouchValuesAverage_t::ValueArrayType average_values;
         touchValuesAverage.get_average_values(average_values);
-        post_touch_values_u32(average_values);
+        post_touch_values(average_values);
     }
-}
-
-
-
-// Convert the uint16_t array to a uint32_t array.
-static void handle_touch_values_u16(uint16_t *touch_values_u16)
-{
-    uint32_t touch_values_u32[TOUCH_PAD_MAX];
-    for (int ndx = 0; ndx < TOUCH_PAD_MAX; ++ndx) {
-        touch_values_u32[ndx] = touch_values_u16[ndx];
-    }
-    handle_touch_values_u32(touch_values_u32);
 }
 
 
@@ -191,7 +168,8 @@ static void handle_touch_values_u16(uint16_t *touch_values_u16)
 #ifdef USE_APP_TIMER_HANDLER
 static void app_timer_tick_handler(void* handler_args, esp_event_base_t base, int32_t id, void* event_data)
 {
-    uint32_t touch_values[TOUCH_PAD_MAX];
+    TouchValuesAverage_t::ValueArrayType touch_values;
+
     for (uint8_t ndx = FIRST_TOUCH_PAD_INDEX; ndx < TOUCH_PAD_MAX; ++ndx) {
 #if defined(TOUCH_VALUE_16_BIT)
         uint16_t tmp_u16;
@@ -204,7 +182,7 @@ static void app_timer_tick_handler(void* handler_args, esp_event_base_t base, in
 #endif
     }
 
-    handle_touch_values_u32(touch_values);
+    handle_touch_values(touch_values);
 }
 #endif
 
@@ -213,7 +191,11 @@ static void app_timer_tick_handler(void* handler_args, esp_event_base_t base, in
 #ifdef USE_TOUCH_FILTER_CALLBACK
 static void touch_filter_callback(uint16_t *raw_values, uint16_t *filtered_values)
 {
-    handle_touch_values_u16(filtered_values);
+    TouchValuesAverage_t::ValueArrayType touch_values;
+    for (uint8_t ndx = 0; ndx < TOUCH_PAD_MAX; ++ndx) {
+        touch_values[ndx] = filtered_values[ndx];
+    }
+    handle_touch_values(touch_values);
 }
 #endif
 

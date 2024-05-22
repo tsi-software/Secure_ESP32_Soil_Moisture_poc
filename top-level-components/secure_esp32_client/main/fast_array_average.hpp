@@ -45,9 +45,6 @@ public:
 
 
     void reset() {
-        // for (std::size_t index = 0; index < array_size; ++index) {
-        //     accumulator[index] = 0;
-        // }
         for (auto &value : accumulator) {
             value = 0;
         }
@@ -61,20 +58,6 @@ public:
         }
         ++array_sample_count;
     }
-
-
-    // 'array_values' must be an array of size 'array_size'!
-    // void add_array_values(ValueType *array_values) {
-    //     if (array_sample_count >= sample_size) {
-    //         //TODO: throw an error.
-    //         return;
-    //     }
-    //
-    //     for (std::size_t index = 0; index < array_size; ++index) {
-    //         accumulator[index] += array_values[index];
-    //     }
-    //     ++array_sample_count;
-    // }
 
 
     bool is_average_ready() {
@@ -148,7 +131,6 @@ public:
 
 private:
     unsigned array_sample_count = 0;
-    //AccumulatorType accumulator[array_size];
     std::array<AccumulatorType, array_size> accumulator;
 };
 
