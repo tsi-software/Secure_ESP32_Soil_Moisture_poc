@@ -118,7 +118,12 @@ static void post_touch_values(TouchValuesAverage_t::ValueArrayType& touch_values
         diff = prior_value > new_value ? prior_value - new_value : new_value - prior_value;
         if (local_force_update || diff > UPDATE_THRESHOLD_VALUE) {
             prior_touch_value[ndx] = new_value;
-            ESP_LOGD(LOG_TAG, "touch - [%d] %u (diff=%u)", ndx, new_value, diff);
+
+#if defined(TOUCH_VALUE_32_BIT)
+            ESP_LOGD(LOG_TAG, "touch - [%u] %lu (diff=%lu)", ndx, new_value, diff);
+#else
+            ESP_LOGD(LOG_TAG, "touch - [%u] %u (diff=%u)", ndx, new_value, diff);
+#endif
 
             app_touch_value_change_event_payload payload = {};
             payload.utc_timestamp = now;
