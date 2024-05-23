@@ -21,7 +21,7 @@ app_touch_pads.cpp
 //------------------------------------------------------------------------------
 #if CONFIG_IDF_TARGET_ESP32S2 || CONFIG_IDF_TARGET_ESP32S3
    // ESP32 S2 and S3 touch pads.
-#  define USE_APP_TIMER_HANDLER
+#  define USE_TOUCH_TIMER_CALLBACK
 #  define TOUCH_VALUE_32_BIT
 
 #elif CONFIG_IDF_TARGET_ESP32
@@ -104,7 +104,7 @@ static void post_touch_values(TouchValuesAverage_t::ValueArrayType& touch_values
     time_t now = 0;
     time(&now);
 
-    ESP_LOGV(LOG_TAG, "post_touch_values");
+    ESP_LOGD(LOG_TAG, "post_touch_values");
 
     // Just incase force_update is changed while we are processing below.
     const bool local_force_update = force_update;
@@ -170,6 +170,30 @@ static void handle_touch_values(TouchValuesAverage_t::ValueArrayType& touch_valu
 
 
 
+#ifdef USE_TOUCH_TIMER_CALLBACK
+static void touch_timer_callback(void *arg)
+{
+    TouchValuesAverage_t::ValueArrayType touch_values;
+
+    for (uint8_t ndx = FIRST_TOUCH_PAD_INDEX; ndx < TOUCH_PAD_MAX; ++ndx) {
+#if defined(TOUCH_VALUE_16_BIT)
+        uint16_t tmp_u16;
+        touch_pad_read_filtered(ndx, &tmp_u16);
+        touch_values[ndx] = tmp_u16;
+#elif defined(TOUCH_VALUE_32_BIT)
+        uint32_t tmp_u32;
+        touch_pad_filter_read_smooth(TOUCH_PAD[ndx], &tmp_u32);
+        touch_values[ndx] = tmp_u32;
+#endif
+    }
+
+    handle_touch_values(touch_values);
+}
+#endif
+
+
+
+/****
 #ifdef USE_APP_TIMER_HANDLER
 static void app_timer_tick_handler(void* handler_args, esp_event_base_t base, int32_t id, void* event_data)
 {
@@ -190,6 +214,7 @@ static void app_timer_tick_handler(void* handler_args, esp_event_base_t base, in
     handle_touch_values(touch_values);
 }
 #endif
+****/
 
 
 
@@ -239,16 +264,33 @@ static void read_touch_pads_init_device()
     const TickType_t xdelay = 5000 / portTICK_PERIOD_MS;
     vTaskDelay(xdelay);
 
+    //---------------------------------------------------------------------
     // Now that the touch filters have had time to start doing their thing
     // start listening for the app timer events,
     // which regularly process the filtered touch values.
-    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(
-            event_loop_handle,
-            APP_TIMER_EVENTS, APP_TIMER_TICK_EVENT,
-            app_timer_tick_handler,
-            event_loop_handle,
-            NULL
-    ));
+    //---------------------------------------------------------------------
+
+#ifdef USE_TOUCH_TIMER_CALLBACK
+    esp_timer_create_args_t periodic_timer_args = {};
+    periodic_timer_args.callback = &touch_timer_callback;
+    periodic_timer_args.arg = (void *)event_loop_handle;
+    periodic_timer_args.name = "touch_timer";
+
+    static esp_timer_handle_t periodic_timer;
+    ESP_ERROR_CHECK(esp_timer_create(&periodic_timer_args, &periodic_timer));
+
+    // Start the timer so that we average the sample values over 1 second.
+    ESP_ERROR_CHECK(esp_timer_start_periodic(periodic_timer, 1000000 / touchValuesAverage.sample_size));
+    ESP_LOGI(LOG_TAG, "Touch Timer Started");
+#endif
+
+    // ESP_ERROR_CHECK(esp_event_handler_instance_register_with(
+    //         event_loop_handle,
+    //         APP_TIMER_EVENTS, APP_TIMER_TICK_EVENT,
+    //         app_timer_tick_handler,
+    //         event_loop_handle,
+    //         NULL
+    // ));
 }
 
 

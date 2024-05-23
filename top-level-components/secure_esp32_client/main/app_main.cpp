@@ -56,8 +56,8 @@ extern "C" void app_main(void)
     esp_log_level_set("app_event_loop", ESP_LOG_VERBOSE);
     esp_log_level_set("app_mqtt", ESP_LOG_VERBOSE);
     esp_log_level_set("app_sntp_sync_time", ESP_LOG_VERBOSE);
-    esp_log_level_set("app_timer", ESP_LOG_VERBOSE);
-    esp_log_level_set("app_touch_pads", ESP_LOG_VERBOSE);
+    esp_log_level_set("app_timer", ESP_LOG_DEBUG);
+    esp_log_level_set("app_touch_pads", ESP_LOG_DEBUG);
     esp_log_level_set("app_wifi_station", ESP_LOG_VERBOSE);
 
     esp_log_level_set("TRANSPORT_BASE", ESP_LOG_DEBUG);

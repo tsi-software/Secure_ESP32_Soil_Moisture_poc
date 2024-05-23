@@ -37,7 +37,7 @@ public:
 
     FastArrayAverage(unsigned number_of_bits) :
         number_of_bits(number_of_bits),
-        sample_size(1 << number_of_bits) //TODO: EXPLAIN!
+        sample_size(1 << number_of_bits) // The number of samples to collect before calculating the average.
     {
         //TODO: number_of_bits > 0 and number_of_bits < 2^(sizeof(S))
         reset();
