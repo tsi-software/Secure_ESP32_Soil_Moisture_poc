@@ -9,7 +9,7 @@ logger = logging.getLogger('create_client_uuid')
 
 SCRIPT_NAME = Path(os.path.realpath(__file__))
 SCRIPT_PATH  = Path(os.path.dirname(os.path.realpath(__file__)))
-DEFAULT_TARGET_PATH = (SCRIPT_PATH / '..' / 'private').resolve()
+DEFAULT_TARGET_PATH = (SCRIPT_PATH / '..' / 'certificates').resolve()
 DEFAULT_FILENAME = DEFAULT_TARGET_PATH  / 'client_id.uuid4'
 
 def create_client_uuid(args):
