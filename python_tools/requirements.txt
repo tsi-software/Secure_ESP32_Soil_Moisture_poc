@@ -1,4 +1,6 @@
-pandas
+aiomqtt
+aiofiles
 matplotlib
 numpy
+pandas
 tabulate
