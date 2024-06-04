@@ -2,5 +2,6 @@ aiomqtt
 aiofiles
 matplotlib
 numpy
+paho-mqtt
 pandas
 tabulate

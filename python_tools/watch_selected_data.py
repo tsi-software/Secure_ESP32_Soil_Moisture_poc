@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 # watch_selected_data.py
-# Written for python 3.11
 #
 # Setup:
 # python3 -m venv .venv
@@ -8,23 +7,18 @@
 # pip3 install --upgrade pip
 # pip3 install -r requirements.txt
 #
-import asyncio
-import aiofiles
-import aiomqtt
 import argparse
 import configparser
 from datetime import datetime, timezone
 from itertools import chain
 import logging
 import os
+import paho.mqtt.client as mqtt
 from pathlib import Path
 from pprint import pformat
 import ssl
-#from typing import TypeAlias
 
 logger = logging.getLogger('watch_selected_data')
-
-#QueueType: TypeAlias = type(asyncio.Queue)
 
 ACTIVE_CERTIFICATES_FILENAME = 'active_certificates.vars'
 #DEFAULT_CONFIG_FILENAME = 'config.ini'
@@ -49,104 +43,180 @@ def read_vars_file(vars_file):
         return parser['DEFAULT']
 
 
+
+def read_config_file(args):
+    """
+    """
+    # Try various directories named 'private'...
+    common_dirs = (
+        './private',
+        '../private',
+        '../../private',
+        '~/private',
+    )
+    for dir_str in common_dirs:
+        test_dir = Path(dir_str)
+        logger.debug(f'private test_dir: {test_dir}')
+
+        if test_dir.is_dir():
+            vars_file = test_dir / args.active
+            logger.debug(f'vars_file: {vars_file}')
+            if vars_file.is_file():
+                return read_vars_file(vars_file)
+
+    raise Exception('Config File NOT FOUND!')
+
+
+
+def get_active_certificates_vars(config_vars) -> str:
+    """
+    """
+    #config_vars = read_config_file(args)
+
+    active_cert_vars = config_vars.get('ACTIVE_CERTIFICATES_DIR', fallback='')
+    logger.debug(f'active_cert_vars: {active_cert_vars}')
+    if active_cert_vars:
+        return active_cert_vars
+
+    raise Exception('Active Certificates NOT FOUND!')
+
+
+
+def get_active_certificates_dir(active_certificates) -> os.PathLike:
+    """
+    """
+    # Try various directories named 'private'...
+    common_dirs = (
+        './certificates',
+        '../certificates',
+        '../../certificates',
+        '~/certificates',
+    )
+    for dir_str in common_dirs:
+        test_dir = Path(dir_str)
+        logger.debug(f'certificates test_dir: {test_dir}')
+
+        if test_dir.is_dir():
+            certs_dir = test_dir / active_certificates
+            logger.debug(f'certs_dir: {certs_dir}')
+            return certs_dir
+
+    raise Exception('Active Certificates Dir NOT FOUND!')
+
+
+
+def get_connection_parameters(config_vars, certs_dir):
+    tls_params = {
+        'ca_certs': certs_dir / 'mosq_ca.crt',
+        'certfile': certs_dir / 'client_a' / 'mosq_client.crt',
+        'keyfile':  certs_dir / 'client_a' / 'mosq_client.key',
+        'cert_reqs': ssl.CERT_REQUIRED,
+        'tls_version': ssl.PROTOCOL_TLSv1_2,
+    }
+
+    return {
+        'hostname': config_vars.get('HOSTNAME'),
+        'port': config_vars.getint('PORT', fallback=8883),
+        'tls_params': tls_params,
+        'protocol': mqtt.MQTTv5,
+        'mqtt_topic': config_vars.get('TOPIC', fallback='/soilmoisture/#'),
+    }
+    # ... or ...
+    # mqtt.MQTTv311
+    # mqtt.MQTTv31
+
+
+
 #-------------------------------------------------------------------------------
-class WatchMqttMessages:
+class WatchMqttMessages(mqtt.Client):
     """
     """
 
     def __init__(self, args):
         """
         args is the Command Line Arguments.
-        Default config values are defined in this function.
         """
         self.args = args
+        self.config_vars = read_config_file(self.args)
+        self.active_certificates = get_active_certificates_vars(self.config_vars)
+        self.certs_dir = get_active_certificates_dir(self.active_certificates)
+        self.connection_parameters = get_connection_parameters(self.config_vars, self.certs_dir)
 
-        # self.config = configparser.ConfigParser()
-        # self.config.read(self.args.active)
-
-        # MQTT Connection Parameters:
-        active_certificates = self.get_active_certificate_vars()
-        certs_dir = self.get_active_certificates_dir(active_certificates)
-
-        tls_params = aiomqtt.TLSParameters(
-            ca_certs = certs_dir / 'mosq_ca.crt',
-            certfile = certs_dir / 'client_a' / 'mosq_client.crt',
-            keyfile  = certs_dir / 'client_a' / 'mosq_client.key',
-            cert_reqs = ssl.CERT_REQUIRED,
-            tls_version = ssl.PROTOCOL_TLSv1_2,
+        super().__init__(
+            callback_api_version = mqtt.CallbackAPIVersion.VERSION2,
+            userdata = self,
+            protocol = self.connection_parameters['protocol'],
         )
-        self.hostname = self.config.get('HOSTNAME')
-        self.port = self.config.getint('PORT', fallback=8883)
-        self.tls_params = tls_params
-        self.protocol = aiomqtt.ProtocolVersion.V5
-        #self.protocol = aiomqtt.ProtocolVersion.V311
-        self.mqtt_topic = self.config.get('TOPIC', fallback='/soilmoisture/#')
+
+        self.tls_set(
+            ca_certs = self.connection_parameters['tls_params']['ca_certs'],
+            certfile = self.connection_parameters['tls_params']['certfile'],
+            keyfile = self.connection_parameters['tls_params']['keyfile'],
+            cert_reqs = self.connection_parameters['tls_params']['cert_reqs'],
+            tls_version = self.connection_parameters['tls_params']['tls_version'],
+        )
+
+        # self.mqtt_client.on_connect = on_connect
+        # self.mqtt_client.on_message = on_message
+
+
+    def connect(self):
+        """
+        """
+        logger.debug(f'connect()\n{self}')
+
+        super().connect(
+            host = self.connection_parameters['hostname'],
+            port = self.connection_parameters['port'],
+            keepalive = 60
+        )
 
 
     def __repr__(self) -> str:
-        tmp = {
-            'hostname': self.hostname,
-            'port': self.port,
-            'tls_params': self.tls_params,
-            'protocol': self.protocol,
-            'mqtt_topic': self.mqtt_topic,
-        }
-        return pformat(tmp)
+        return pformat(self.connection_parameters)
+        # tmp = {
+        #     'hostname': self.hostname,
+        #     'port': self.port,
+        #     'tls_params': self.tls_params,
+        #     'protocol': self.protocol,
+        #     'mqtt_topic': self.mqtt_topic,
+        # }
+        # return pformat(tmp)
 
 
-    def get_active_certificate_vars(self) -> str:
-        """
-        """
-        # Check the config file for a certificate directory.
-        # cert_dir = self.config.get('MQTT Connection', 'cert_dir', fallback='')
-        # if cert_dir and os.path.isdir(cert_dir):
-        #     return cert_dir
-
-        # Try various directories named 'private'...
-        common_dirs = (
-            './private',
-            '../private',
-            '../../private',
-            '~/private',
-        )
-        for dir_str in common_dirs:
-            test_dir = Path(dir_str)
-            logger.debug(f'private test_dir: {test_dir}')
-
-            if test_dir.is_dir():
-                vars_file = test_dir / self.args.active
-                logger.debug(f'vars_file: {vars_file}')
-                if vars_file.is_file():
-                    self.config = read_vars_file(vars_file)
-
-                    active_cert_vars = self.config.get('ACTIVE_CERTIFICATES_DIR', fallback='')
-                    logger.debug(f'active_cert_vars: {active_cert_vars}')
-                    if active_cert_vars:
-                        return active_cert_vars
-
-        raise Exception('Active Certificates NOT FOUND!')
+    # # The callback for when the client receives a CONNACK response from the server.
+    # def on_connect(client, userdata, flags, reason_code, properties):
+    #     self = userdata
+    #     print(f"Connected with result code {reason_code}")
+    #     # Subscribing in on_connect() means that if we lose the connection and
+    #     # reconnect then subscriptions will be renewed.
+    #     #client.subscribe("$SYS/#")
 
 
-    def get_active_certificates_dir(self, active_certificates) -> os.PathLike:
-        """
-        """
-        # Try various directories named 'private'...
-        common_dirs = (
-            './certificates',
-            '../certificates',
-            '../../certificates',
-            '~/certificates',
-        )
-        for dir_str in common_dirs:
-            test_dir = Path(dir_str)
-            logger.debug(f'certificates test_dir: {test_dir}')
+    # # The callback for when a PUBLISH message is received from the server.
+    # def on_message(client, userdata, msg):
+    #     self = userdata
+    #     print(msg.topic + " " + str(msg.payload))
 
-            if test_dir.is_dir():
-                certs_dir = test_dir / active_certificates
-                logger.debug(f'certs_dir: {certs_dir}')
-                return certs_dir
 
-        raise Exception('Active Certificates Dir NOT FOUND!')
+    def on_connect(self, mqttc, obj, flags, reason_code, properties):
+        print("rc: "+str(reason_code))
+
+    def on_connect_fail(self, mqttc, obj):
+        print("Connect failed")
+
+    def on_message(self, mqttc, obj, msg):
+        print(msg.topic+" "+str(msg.qos)+" "+str(msg.payload))
+
+    def on_publish(self, mqttc, obj, mid, reason_codes, properties):
+        print("mid: "+str(mid))
+
+    def on_subscribe(self, mqttc, obj, mid, reason_code_list, properties):
+        print("Subscribed: "+str(mid)+" "+str(reason_code_list))
+
+    def on_log(self, mqttc, obj, level, string):
+        print(string)
+
 
 
     def get_output_filename(self) -> os.PathLike:
@@ -169,76 +239,60 @@ class WatchMqttMessages:
         return 'sensor_id,sensor_value,utc_timestamp'
 
 
-    async def listen_for_moisture_values(self, mqtt_listen_queue):
-    #async def listen_for_moisture_values(self, mqtt_listen_queue: QueueType):
+    def listen_for_moisture_values(self, mqtt_listen_queue):
         """
         """
         logger.info(f'listen_for_moisture_values(...)\n{self}\n')
 
-        async with aiomqtt.Client(
-            hostname=self.hostname,
-            port=self.port,
-            tls_params=self.tls_params,
-            protocol=self.protocol
-        ) as client:
-            async with client.messages() as messages:
-                await client.subscribe(self.mqtt_topic)
-                async for message in messages:
-                    msg_str = '{},{}'.format(
-                        message.topic.value,
-                        message.payload.decode('utf-8')
-                    )
-                    await mqtt_listen_queue.put(msg_str)
-                    logger.info('message: ' + msg_str)
+        # async with aiomqtt.Client(
+        #     hostname=self.hostname,
+        #     port=self.port,
+        #     tls_params=self.tls_params,
+        #     protocol=self.protocol
+        # ) as client:
+        #     async with client.messages() as messages:
+        #         await client.subscribe(self.mqtt_topic)
+        #         async for message in messages:
+        #             msg_str = '{},{}'.format(
+        #                 message.topic.value,
+        #                 message.payload.decode('utf-8')
+        #             )
+
+        #             # TODO: uncomment
+        #             #await mqtt_listen_queue.put(msg_str)
+                    
+        #             logger.info('message: ' + msg_str)
 
 
-    async def save_values_to_file(self, mqtt_listen_queue):
-    #async def save_values_to_file(self, mqtt_listen_queue: QueueType):
+    def save_values_to_file(self, mqtt_listen_queue):
         """
         """
         value_to_save = None
 
-        while True:
-            # asynchronously wait for the next queued value.
-            logger.debug(f'waiting for queue...\n')
-            value_to_save = await mqtt_listen_queue.get()
-            logger.debug('got: ' + value_to_save)
+        # while True:
+        #     # asynchronously wait for the next queued value.
+        #     logger.debug(f'waiting for queue...\n')
+        #     value_to_save = await mqtt_listen_queue.get()
+        #     logger.debug('got: ' + value_to_save)
 
-            try:
-                pass
+        #     try:
+        #         pass
 
-            except TimeoutError:
-                # Ignore TimeoutErrors here.
-                # The intentional side effects are:
-                #  1) Close and save the output file because no values are being processed at the moment
-                #     and the file is not needed.
-                #  2) Go back to the top of the outside loop where we 'async' wait for the next queued value.
-                #  3) Because the output file has been closed it will need to be re-open,
-                #     this gives us the opportunity to use a new filename based on the current date
-                #     if the date has just changed.
-                logger.debug('file flushed and closed.')
-                pass
-            except Exception as err:
-                logger.error(f"Unexpected {err=}, {type(err)=}")
-                raise
+        #     except TimeoutError:
+        #         # Ignore TimeoutErrors here.
+        #         # The intentional side effects are:
+        #         #  1) Close and save the output file because no values are being processed at the moment
+        #         #     and the file is not needed.
+        #         #  2) Go back to the top of the outside loop where we 'async' wait for the next queued value.
+        #         #  3) Because the output file has been closed it will need to be re-open,
+        #         #     this gives us the opportunity to use a new filename based on the current date
+        #         #     if the date has just changed.
+        #         logger.debug('file flushed and closed.')
+        #         pass
+        #     except Exception as err:
+        #         logger.error(f"Unexpected {err=}, {type(err)=}")
+        #         raise
 
-
-    async def start(self):
-        """
-        """
-        logger.debug(f'start()\n{self}')
-        mqtt_listen_queue = asyncio.Queue()
-        #mqtt_listen_queue: QueueType = asyncio.Queue()
-
-        # async with asyncio.TaskGroup() as task_group:
-        #     task_group.create_task(self.listen_for_moisture_values(mqtt_listen_queue))
-        #     task_group.create_task(self.save_values_to_file(mqtt_listen_queue))
-
-        task1 = asyncio.create_task( self.listen_for_moisture_values(mqtt_listen_queue) )
-        task2 = asyncio.create_task( self.save_values_to_file(mqtt_listen_queue) )
-        # ...
-        await task1
-        #await task2
 
 
 #-------------------------------------------------------------------------------
@@ -256,12 +310,13 @@ def main(args) -> None:
     """
     """
     watch_mqtt_messages = WatchMqttMessages(args)
+    watch_mqtt_messages.connect()
+    watch_mqtt_messages.subscribe(topic="#", qos=0)
 
-    if args.debug:
-        asyncio.run(watch_mqtt_messages.start(), debug=True)
-    else:
-        asyncio.run(watch_mqtt_messages.start())
-
+    watch_mqtt_messages.loop_forever()
+    # watch_mqtt_messages.loop_start()
+    # ...
+    # watch_mqtt_messages.loop_stop()
 
 
 #-------------------------------------------------------------------------------
