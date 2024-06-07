@@ -9,7 +9,7 @@
 #
 import argparse
 import configparser
-from datetime import datetime, timezone
+from datetime import timedelta, datetime, tzinfo, timezone
 from itertools import chain
 import logging
 import os
@@ -200,23 +200,71 @@ class WatchMqttMessages(mqtt.Client):
 
 
     def on_connect(self, mqttc, obj, flags, reason_code, properties):
-        print("rc: "+str(reason_code))
+        logger.debug("rc: "+str(reason_code))
 
     def on_connect_fail(self, mqttc, obj):
-        print("Connect failed")
+        logger.error("Connect failed")
 
     def on_message(self, mqttc, obj, msg):
-        print(msg.topic+" "+str(msg.qos)+" "+str(msg.payload))
+        logger.debug(msg.topic+" "+str(msg.qos)+" "+msg.payload.decode('ascii'))
+
+        topic = msg.topic.split('/')
+        if 'soilmoisture' == topic[0]:
+            self.soilmoisture(topic, msg)
 
     def on_publish(self, mqttc, obj, mid, reason_codes, properties):
-        print("mid: "+str(mid))
+        logger.debug("mid: "+str(mid))
 
     def on_subscribe(self, mqttc, obj, mid, reason_code_list, properties):
-        print("Subscribed: "+str(mid)+" "+str(reason_code_list))
+        logger.debug("Subscribed: "+str(mid)+" "+str(reason_code_list))
 
     def on_log(self, mqttc, obj, level, string):
-        print(string)
+        logger.debug(string)
 
+
+
+    def soilmoisture(self, topic, msg):
+        """
+        """
+        device_lookup = {
+            '05446845-5f69-4323-9061-ac2d5069992c': {
+                'name': '#1',
+                'device': 'ESP32-S3',
+            },
+            '3f36213a-ec4b-43ea-8a85-ac6098fac883': {
+                'name': '#2',
+                'device': 'ESP32-S3',
+            },
+            '517b462f-34ba-4c10-a41a-2310a8acd626': {
+                'name': '#3',
+                'device': 'ESP32-S2',
+            },
+            '3fcfc9da-f6b7-4815-841f-d822e1cf7180': {
+                'name': '#4',
+                'device': 'ESP32-S2',
+            },
+        }
+        id = topic[1]
+        device = device_lookup[id]
+        device_name = device['name']
+        port_type = topic[2]
+        port_number = int(topic[3])
+        touch_value, touch_timestamp = msg.payload.decode('ascii').split(',')
+        touch_time = datetime.fromtimestamp(int(touch_timestamp), tz=timezone.utc).astimezone()
+        touch_time_str = touch_time.strftime('%Y-%m-%d %H:%M:%S')
+        message_str = f'Touch Pad: device={device_name}, port={port_number} value={touch_value}, {touch_time_str}'
+
+        logger.debug(message_str)
+
+        if device_name == '#2':
+            if port_number == 1:
+                logger.info(message_str)
+            # if port_number >= 1 and port_number <= 4:
+            #     logger.info(message_str)
+
+        # if device_name == '#4':
+        #     if port_number == 2 or port_number == 1:
+        #         logger.info(message_str)
 
 
     def get_output_filename(self) -> os.PathLike:
@@ -311,7 +359,7 @@ def main(args) -> None:
     """
     watch_mqtt_messages = WatchMqttMessages(args)
     watch_mqtt_messages.connect()
-    watch_mqtt_messages.subscribe(topic="#", qos=0)
+    watch_mqtt_messages.subscribe(topic='#', qos=0)
 
     watch_mqtt_messages.loop_forever()
     # watch_mqtt_messages.loop_start()
