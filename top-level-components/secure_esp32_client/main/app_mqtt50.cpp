@@ -10,8 +10,8 @@ app_mqtt50.cpp
 //#include "esp_system.h"
 #include "mqtt_client.h"
 
+#include "app_events.h"
 #include "app_mqtt50.h"
-#include "app_touch_pads.h"
 
 
 static const char *LOG_TAG = "app_mqtt";
@@ -182,6 +182,13 @@ static void app_touch_value_handler(void* handler_args, esp_event_base_t base, i
     struct mqtt_publish_params *mqtt_publish_params = static_cast<struct mqtt_publish_params *>(handler_args);
     app_touch_value_change_event_payload *payload = static_cast<app_touch_value_change_event_payload *>(event_data);
 
+
+    // JUST TESTING!
+    if (payload->touch_pad_num == 1) {
+        ESP_LOGI(LOG_TAG, "post - [%u] %lu", payload->touch_pad_num, payload->touch_value);
+    }
+
+
     const char *topic_str_fmt = "soilmoisture/%s/touchpad/%u";
     const char *data_str_fmt =  "%lu,%lld";
 
@@ -229,7 +236,10 @@ static void app_touch_value_handler(void* handler_args, esp_event_base_t base, i
         // Outbox Full.
         ESP_LOGE(LOG_TAG, "OUTBOX FULL: esp_mqtt_client_enqueue(): %s, %s", topic, data);
     } else {
-        ESP_LOGD(LOG_TAG, "MQTT ENQUEUED: msg_id:%d, %s, %s", msg_id, topic, data);
+        // JUST TESTING!
+        if (payload->touch_pad_num == 1) {
+            ESP_LOGV(LOG_TAG, "MQTT ENQUEUED: msg_id:%d, %s, %s", msg_id, topic, data);
+        }
     }
 }
 

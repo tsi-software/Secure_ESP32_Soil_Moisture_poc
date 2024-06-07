@@ -116,13 +116,22 @@ static void post_touch_values(TouchValuesAverage_t::ValueArrayType& touch_values
         prior_value = prior_touch_value[ndx];
         new_value = touch_values[ndx];
         diff = prior_value > new_value ? prior_value - new_value : new_value - prior_value;
+
+        if (ndx == 1) {
+#if defined(TOUCH_VALUE_32_BIT)
+            ESP_LOGI(LOG_TAG, "touch - [%u] %lu (diff=%lu)", ndx, new_value, diff);
+#else
+            ESP_LOGI(LOG_TAG, "touch - [%u] %u (diff=%u)", ndx, new_value, diff);
+#endif
+        }
+
         if (local_force_update || diff > UPDATE_THRESHOLD_VALUE) {
             prior_touch_value[ndx] = new_value;
 
 #if defined(TOUCH_VALUE_32_BIT)
-            ESP_LOGD(LOG_TAG, "touch - [%u] %lu (diff=%lu)", ndx, new_value, diff);
+            ESP_LOGV(LOG_TAG, "touch - [%u] %lu (diff=%lu)", ndx, new_value, diff);
 #else
-            ESP_LOGD(LOG_TAG, "touch - [%u] %u (diff=%u)", ndx, new_value, diff);
+            ESP_LOGV(LOG_TAG, "touch - [%u] %u (diff=%u)", ndx, new_value, diff);
 #endif
 
             app_touch_value_change_event_payload payload = {};
@@ -158,12 +167,25 @@ static void post_touch_values(TouchValuesAverage_t::ValueArrayType& touch_values
 
 static void handle_touch_values(TouchValuesAverage_t::ValueArrayType& touch_values)
 {
+    /*
     ESP_LOGV(LOG_TAG, "handle_touch_values");
+#if defined(TOUCH_VALUE_32_BIT)
+    ESP_LOGI(LOG_TAG, "raw touch - [%u] %lu", 1, touch_values[1]);
+#else
+    ESP_LOGI(LOG_TAG, "raw touch - [%u] %u", 1, touch_values[1]);
+#endif
+    */
+
     touchValuesAverage.add_values(touch_values);
 
     if (touchValuesAverage.is_average_ready()) {
         TouchValuesAverage_t::ValueArrayType average_values;
         touchValuesAverage.get_average_values(average_values);
+#if defined(TOUCH_VALUE_32_BIT)
+        ESP_LOGI(LOG_TAG, "avg touch - [%u] %lu", 1, average_values[1]);
+#else
+        ESP_LOGI(LOG_TAG, "avg touch - [%u] %u", 1, average_values[1]);
+#endif
         post_touch_values(average_values);
     }
 }
