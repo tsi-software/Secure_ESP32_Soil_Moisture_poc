@@ -48,6 +48,8 @@ app_touch_pads.cpp
 //  the new value to be posted a an event.
 #define UPDATE_THRESHOLD_VALUE 16
 
+static const UBaseType_t readTouchPadsTask_IndexToNotify = 1;
+
 ESP_EVENT_DEFINE_BASE(APP_TOUCH_EVENTS);
 
 static const char* LOG_TAG = "app_touch_pads";
@@ -126,7 +128,7 @@ static void post_touch_values(TouchValuesAverage_t::ValueArrayType& touch_values
     time_t now = 0;
     time(&now);
 
-    ESP_LOGD(LOG_TAG, "post_touch_values");
+    ESP_LOGV(LOG_TAG, "post_touch_values");
 
     // Just incase force_update is changed while we are processing below.
     const bool local_force_update = force_update;
@@ -189,8 +191,12 @@ static void post_touch_values(TouchValuesAverage_t::ValueArrayType& touch_values
 
 
 
-static void handle_touch_values(TouchValuesAverage_t::ValueArrayType& touch_values)
+enum class handle_touch_result { average_not_ready, average_ready };
+
+
+static handle_touch_result handle_touch_values(TouchValuesAverage_t::ValueArrayType& touch_values)
 {
+    handle_touch_result result = handle_touch_result::average_not_ready;
 
 #ifdef DEBUG_TOUCH_PAD_NUMBER
     ESP_LOGV(LOG_TAG, "handle_touch_values");
@@ -204,6 +210,7 @@ static void handle_touch_values(TouchValuesAverage_t::ValueArrayType& touch_valu
     touchValuesAverage.add_values(touch_values);
 
     if (touchValuesAverage.is_average_ready()) {
+        result = handle_touch_result::average_ready;
         TouchValuesAverage_t::ValueArrayType average_values;
         touchValuesAverage.get_average_values(average_values);
 
@@ -216,6 +223,58 @@ static void handle_touch_values(TouchValuesAverage_t::ValueArrayType& touch_valu
 #endif // DEBUG_TOUCH_PAD_NUMBER
 
         post_touch_values(average_values);
+    }
+
+    return result;
+}
+
+
+
+static void off_timer_task_handler()
+{
+    // Handle timer events "Off" of the system Timer Task.
+    //int counter = 0;
+
+    while(true) {
+        // Wait for the short timer and do the following processing on this Task
+        // rather than on the Timer Task which really does NOT want to get bogged down.
+        //ulTaskNotifyTakeIndexed(readTouchPadsTask_IndexToNotify, pdTRUE, portMAX_DELAY);
+        BaseType_t wait_result = xTaskNotifyWaitIndexed(readTouchPadsTask_IndexToNotify, 0, ULONG_MAX, NULL, portMAX_DELAY);
+        if (!wait_result) {
+            // The notification timed-out. Ingore and wait again.
+            continue;
+        }
+        ESP_LOGV(LOG_TAG, "OffTimerTask SHORT timer event...");
+
+
+        // ++counter;
+        // if (counter >= 16) {
+        //     esp_timer_stop(short_sample_timer);
+        //     counter = 0;
+        //     ESP_LOGD(LOG_TAG, "OffTimerTask reset.");
+        // }
+
+
+        // Note: don't instantiate 'touch_values' on the stack because it takes up a bit too much space.
+        static TouchValuesAverage_t::ValueArrayType touch_values;
+
+        for (uint8_t ndx = FIRST_TOUCH_PAD_INDEX; ndx < TOUCH_PAD_MAX; ++ndx) {
+#if defined(TOUCH_VALUE_16_BIT)
+            uint16_t tmp_u16;
+            touch_pad_read_filtered(ndx, &tmp_u16);
+            touch_values[ndx] = tmp_u16;
+#elif defined(TOUCH_VALUE_32_BIT)
+            uint32_t tmp_u32;
+            touch_pad_filter_read_smooth(TOUCH_PAD[ndx], &tmp_u32);
+            touch_values[ndx] = tmp_u32;
+#endif
+        }
+
+        handle_touch_result handle_touch_result = handle_touch_values(touch_values);
+        if (handle_touch_result::average_ready == handle_touch_result) {
+            esp_timer_stop(short_sample_timer);
+            ESP_LOGD(LOG_TAG, "OffTimerTask restart touch sample averaging.");
+        }
     }
 }
 
@@ -247,14 +306,10 @@ static void touch_timer_callback(void *arg)
 static void short_sample_timer_callback(void *arg)
 {
     // Handle timer events "Off" of the system Timer Task.
-    UBaseType_t offTimerTask_IndexToNotify = 1;
-
+    // Do the heavy lifing on the task specified in 'arg'.
     TaskHandle_t taskToNotify = static_cast<TaskHandle_t>(arg);
-
-    BaseType_t result;
-    //result = xTaskNotifyGiveIndexed(taskToNotify, offTimerTask_IndexToNotify);
-    result = xTaskNotifyIndexed(taskToNotify, offTimerTask_IndexToNotify, 1, eSetValueWithoutOverwrite);
-    //result = xTaskNotifyIndexed(taskToNotify, offTimerTask_IndexToNotify, 0, eNoAction);
+    //xTaskNotifyGiveIndexed(taskToNotify, readTouchPadsTask_IndexToNotify);
+    xTaskNotifyIndexed(taskToNotify, readTouchPadsTask_IndexToNotify, 1, eSetValueWithoutOverwrite);
 }
 #endif // USE_TOUCH_TIMER_CALLBACK
 
@@ -465,37 +520,15 @@ static void read_touch_pads_init_task(void *pvParameters)
         TOUCH_PAD_CONFIG(TOUCH_PAD[ndx], TOUCH_THRESH_NO_USE);
     }
 
-    // This must be done last.
+    // This must be done after the above init's and config's.
     read_touch_pads_init_device();
 
-
     // Handle timer events "Off" of the system Timer Task.
-    // TODO: off_timer_task_handler()
-    UBaseType_t offTimerTask_IndexToNotify = 1;
-    int counter = 0;
-    while(true) {
-        // Wait for the short timer and do the following processing on this Task
-        // rather than on the Timer Task which really does NOT want to get bogged down.
+    // This function should never return.
+    off_timer_task_handler();
 
-        //ulTaskNotifyTakeIndexed(offTimerTask_IndexToNotify, pdTRUE, portMAX_DELAY);
-
-        BaseType_t result = xTaskNotifyWaitIndexed(offTimerTask_IndexToNotify, 0, ULONG_MAX, NULL, portMAX_DELAY);
-        if (!result) {
-            // The notification timed-out. Ingore and wait again.
-            continue;
-        }
-        ESP_LOGW(LOG_TAG, "OffTimerTask SHORT timer event...");
-
-        ++counter;
-        if (counter >= 8) {
-            esp_timer_stop(short_sample_timer);
-            counter = 0;
-            ESP_LOGD(LOG_TAG, "OffTimerTask reset.");
-        }
-    }
-    ESP_LOGE(LOG_TAG, "read_touch_pads_init Task ENDED!");
-
-    // This task has now finished doing what it needs to do.
+    // This point should not be reached, but if it is, clean up the task properly.
+    ESP_LOGW(LOG_TAG, "read_touch_pads_init Task ENDED!");
     vTaskDelete(NULL);
 }
 
@@ -507,5 +540,6 @@ void app_read_touch_pads_init(esp_event_loop_handle_t event_loop)
     // Create a new task for initializing the touch pads so that we can
     // put in a delay to wait for the touch pad filters to start doing there thing.
     // TODO: usStackDepth should be better fine tuned.
-    xTaskCreate(read_touch_pads_init_task, "read_touch_pads_init", 2048, NULL, uxTaskPriorityGet(NULL), NULL);
+    // original stack size = 2048
+    xTaskCreate(read_touch_pads_init_task, "app_read_touch_pads", 1024*3, NULL, uxTaskPriorityGet(NULL), NULL);
 }

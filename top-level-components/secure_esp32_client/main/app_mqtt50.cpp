@@ -304,6 +304,13 @@ void app_mqtt50_start(
         return;
     }
 
+
+    //TODO: write code to determine the better wait condition.
+    // Wait 5 seconds to fully connect before subscribing.
+    const TickType_t xdelay = 5000 / portTICK_PERIOD_MS;
+    vTaskDelay(xdelay);
+
+
     //-------------------------------------------------------------------
     // Subscribe to MQTT Topics.
     //-------------------------------------------------------------------
