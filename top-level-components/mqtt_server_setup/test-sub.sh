@@ -51,7 +51,8 @@ set -x
 mosquitto_sub --verbose \
   --host ${MQTT_HOST} --port 8883 \
   --cafile ${CERT_PATH}/mosq_ca.crt --cert ${CERT_PATH}/client_a/mosq_client.crt --key ${CERT_PATH}/client_a/mosq_client.key \
-  --topic 'soilmoisture/3f36213a-ec4b-43ea-8a85-ac6098fac883/touchpad/1'
+  --topic 'soilmoisture/3f36213a-ec4b-43ea-8a85-ac6098fac883/touchpad/1' \
+  --topic 'irrigation/#'
 
 
 # mosquitto_sub --verbose \

@@ -88,7 +88,7 @@ static uint64_t short_sample_period; //(in microseconds) this must be based on t
 // - 'long_sample_timer' is the long period timer whose sole purpose is to restart the 'short_sample_timer'
 //    when the next batch of samples are to be started and averaged.
 static esp_timer_handle_t long_sample_timer;
-static uint64_t long_sample_period = 6 * 1000000; // 10 seconds.
+static uint64_t long_sample_period = 10 * 1000000; // 10 seconds.
 static bool is_collecting_samples = false;
 
 
@@ -193,7 +193,6 @@ static void post_touch_values(TouchValuesAverage_t::ValueArrayType& touch_values
 
 enum class handle_touch_result { average_not_ready, average_ready };
 
-
 static handle_touch_result handle_touch_values(TouchValuesAverage_t::ValueArrayType& touch_values)
 {
     handle_touch_result result = handle_touch_result::average_not_ready;
@@ -216,9 +215,9 @@ static handle_touch_result handle_touch_values(TouchValuesAverage_t::ValueArrayT
 
 #ifdef DEBUG_TOUCH_PAD_NUMBER
 # if defined(TOUCH_VALUE_32_BIT)
-        ESP_LOGD(LOG_TAG, "avg touch - [%u] %lu", DEBUG_TOUCH_PAD_NUMBER, average_values[DEBUG_TOUCH_PAD_NUMBER]);
+        ESP_LOGV(LOG_TAG, "avg touch - [%u] %lu", DEBUG_TOUCH_PAD_NUMBER, average_values[DEBUG_TOUCH_PAD_NUMBER]);
 # else
-        ESP_LOGD(LOG_TAG, "avg touch - [%u] %u", DEBUG_TOUCH_PAD_NUMBER, average_values[DEBUG_TOUCH_PAD_NUMBER]);
+        ESP_LOGV(LOG_TAG, "avg touch - [%u] %u", DEBUG_TOUCH_PAD_NUMBER, average_values[DEBUG_TOUCH_PAD_NUMBER]);
 # endif
 #endif // DEBUG_TOUCH_PAD_NUMBER
 
@@ -273,7 +272,7 @@ static void off_timer_task_handler()
         handle_touch_result handle_touch_result = handle_touch_values(touch_values);
         if (handle_touch_result::average_ready == handle_touch_result) {
             esp_timer_stop(short_sample_timer);
-            ESP_LOGD(LOG_TAG, "OffTimerTask restart touch sample averaging.");
+            ESP_LOGV(LOG_TAG, "OffTimerTask restart touch sample averaging.");
         }
     }
 }
