@@ -89,7 +89,6 @@ static uint64_t short_sample_period; //(in microseconds) this must be based on t
 //    when the next batch of samples are to be started and averaged.
 static esp_timer_handle_t long_sample_timer;
 static uint64_t long_sample_period = 10 * 1000000; // 10 seconds.
-static bool is_collecting_samples = false;
 
 
 // EXPERIMENTAL!
@@ -232,7 +231,6 @@ static handle_touch_result handle_touch_values(TouchValuesAverage_t::ValueArrayT
 static void off_timer_task_handler()
 {
     // Handle timer events "Off" of the system Timer Task.
-    //int counter = 0;
 
     while(true) {
         // Wait for the short timer and do the following processing on this Task
@@ -244,15 +242,6 @@ static void off_timer_task_handler()
             continue;
         }
         ESP_LOGV(LOG_TAG, "OffTimerTask SHORT timer event...");
-
-
-        // ++counter;
-        // if (counter >= 16) {
-        //     esp_timer_stop(short_sample_timer);
-        //     counter = 0;
-        //     ESP_LOGD(LOG_TAG, "OffTimerTask reset.");
-        // }
-
 
         // Note: don't instantiate 'touch_values' on the stack because it takes up a bit too much space.
         static TouchValuesAverage_t::ValueArrayType touch_values;
@@ -280,28 +269,6 @@ static void off_timer_task_handler()
 
 
 #ifdef USE_TOUCH_TIMER_CALLBACK
-/* DEPRECATED.
-static void touch_timer_callback(void *arg)
-{
-    TouchValuesAverage_t::ValueArrayType touch_values;
-
-    for (uint8_t ndx = FIRST_TOUCH_PAD_INDEX; ndx < TOUCH_PAD_MAX; ++ndx) {
-#if defined(TOUCH_VALUE_16_BIT)
-        uint16_t tmp_u16;
-        touch_pad_read_filtered(ndx, &tmp_u16);
-        touch_values[ndx] = tmp_u16;
-#elif defined(TOUCH_VALUE_32_BIT)
-        uint32_t tmp_u32;
-        touch_pad_filter_read_smooth(TOUCH_PAD[ndx], &tmp_u32);
-        touch_values[ndx] = tmp_u32;
-#endif
-    }
-
-    handle_touch_values(touch_values);
-}
-*/
-
-
 static void short_sample_timer_callback(void *arg)
 {
     // Handle timer events "Off" of the system Timer Task.
@@ -321,33 +288,7 @@ static void long_sample_timer_callback(void *arg)
     esp_timer_stop(short_sample_timer);
     ESP_ERROR_CHECK(esp_timer_start_periodic(short_sample_timer, short_sample_period));
 #endif
-    is_collecting_samples = true;
 }
-
-
-
-/****
-#ifdef USE_APP_TIMER_HANDLER
-static void app_timer_tick_handler(void* handler_args, esp_event_base_t base, int32_t id, void* event_data)
-{
-    TouchValuesAverage_t::ValueArrayType touch_values;
-
-    for (uint8_t ndx = FIRST_TOUCH_PAD_INDEX; ndx < TOUCH_PAD_MAX; ++ndx) {
-#if defined(TOUCH_VALUE_16_BIT)
-        uint16_t tmp_u16;
-        touch_pad_read_filtered(ndx, &tmp_u16);
-        touch_values[ndx] = tmp_u16;
-#elif defined(TOUCH_VALUE_32_BIT)
-        uint32_t tmp_u32;
-        touch_pad_filter_read_smooth(TOUCH_PAD[ndx], &tmp_u32);
-        touch_values[ndx] = tmp_u32;
-#endif
-    }
-
-    handle_touch_values(touch_values);
-}
-#endif
-****/
 
 
 
@@ -404,23 +345,6 @@ static void read_touch_pads_init_device()
     //---------------------------------------------------------------------
 
 #ifdef USE_TOUCH_TIMER_CALLBACK
-    /* DEPRECATED!
-    {
-        esp_timer_create_args_t periodic_timer_args = {};
-        periodic_timer_args.callback = &touch_timer_callback;
-        periodic_timer_args.arg = (void *)event_loop_handle;
-        periodic_timer_args.name = "touch_timer";
-        periodic_timer_args.skip_unhandled_events = true;
-
-        static esp_timer_handle_t periodic_timer;
-        ESP_ERROR_CHECK(esp_timer_create(&periodic_timer_args, &periodic_timer));
-
-        // Start the timer so that we average the sample values over 1 second.
-        ESP_ERROR_CHECK(esp_timer_start_periodic(periodic_timer, 1000000 / touchValuesAverage.sample_size));
-    }
-    */
-
-
     // Start the timer so that we average the sample values over 1 second.
     // 1000000 microseconds = 1 second
     short_sample_period = 1000000 / touchValuesAverage.sample_size;
