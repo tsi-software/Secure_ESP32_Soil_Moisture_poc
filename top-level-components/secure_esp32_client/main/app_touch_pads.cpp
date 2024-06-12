@@ -85,37 +85,45 @@ static esp_timer_handle_t short_sample_timer;
 static uint64_t short_sample_period; //(in microseconds) this must be based on the capacitive touch sensor parameters.
 #endif
 
+
 // - 'long_sample_timer' is the long period timer whose sole purpose is to restart the 'short_sample_timer'
 //    when the next batch of samples are to be started and averaged.
 static esp_timer_handle_t long_sample_timer;
-static uint64_t long_sample_period = 10 * 1000000; // 10 seconds.
+static uint64_t long_sample_period
+#ifdef APP_DEBUG
+    = 5 * 1000000; // every 5 seconds when debugging.
+#else
+    = 60 * 1000000; // every minute under normal use.
+#endif
 
 
-// EXPERIMENTAL!
 struct app_touch_pad_status {
-    touch_pad_t touch_pad;
-    bool enabled;
+    app_touch_pad_status(touch_pad_t touch_pad_num, bool is_activated = true)
+        : touch_pad_num(touch_pad_num), is_activated(is_activated)
+    { }
+
+    // see: github/espressif/esp-idf/components/hal/include/hal/touch_sensor_types.h
+    touch_pad_t touch_pad_num;
+    bool is_activated;
 };
 
-
-// see: github/espressif/esp-idf/components/hal/include/hal/touch_sensor_types.h
-static const touch_pad_t TOUCH_PAD[ TOUCH_PAD_MAX ] = {
-    TOUCH_PAD_NUM0,
-    TOUCH_PAD_NUM1,
-    TOUCH_PAD_NUM2,
-    TOUCH_PAD_NUM3,
-    TOUCH_PAD_NUM4,
-    TOUCH_PAD_NUM5,
-    TOUCH_PAD_NUM6,
-    TOUCH_PAD_NUM7,
-    TOUCH_PAD_NUM8,
-    TOUCH_PAD_NUM9,
+static app_touch_pad_status TOUCH_PAD[ TOUCH_PAD_MAX ] {
+    app_touch_pad_status(TOUCH_PAD_NUM0, false),
+    app_touch_pad_status(TOUCH_PAD_NUM1),
+    app_touch_pad_status(TOUCH_PAD_NUM2),
+    app_touch_pad_status(TOUCH_PAD_NUM3),
+    app_touch_pad_status(TOUCH_PAD_NUM4),
+    app_touch_pad_status(TOUCH_PAD_NUM5),
+    app_touch_pad_status(TOUCH_PAD_NUM6),
+    app_touch_pad_status(TOUCH_PAD_NUM7),
+    app_touch_pad_status(TOUCH_PAD_NUM8),
+    app_touch_pad_status(TOUCH_PAD_NUM9),
 #if SOC_TOUCH_SENSOR_NUM > 10
-    TOUCH_PAD_NUM10,
-    TOUCH_PAD_NUM11,
-    TOUCH_PAD_NUM12,
-    TOUCH_PAD_NUM13,
-    TOUCH_PAD_NUM14
+    app_touch_pad_status(TOUCH_PAD_NUM10),
+    app_touch_pad_status(TOUCH_PAD_NUM11),
+    app_touch_pad_status(TOUCH_PAD_NUM12),
+    app_touch_pad_status(TOUCH_PAD_NUM13),
+    app_touch_pad_status(TOUCH_PAD_NUM14),
 #endif
 };
 
@@ -136,6 +144,11 @@ static void post_touch_values(TouchValuesAverage_t::ValueArrayType& touch_values
     TouchValue_t prior_value, new_value, diff;
 
     for (uint8_t ndx = FIRST_TOUCH_PAD_INDEX; ndx < TOUCH_PAD_MAX; ++ndx) {
+        if (!TOUCH_PAD[ndx].is_activated) {
+            // Ignore touch pads that are not currently activated.
+            continue;
+        }
+
         prior_value = prior_touch_value[ndx];
         new_value = touch_values[ndx];
         diff = prior_value > new_value ? prior_value - new_value : new_value - prior_value;
@@ -247,13 +260,19 @@ static void off_timer_task_handler()
         static TouchValuesAverage_t::ValueArrayType touch_values;
 
         for (uint8_t ndx = FIRST_TOUCH_PAD_INDEX; ndx < TOUCH_PAD_MAX; ++ndx) {
+            if (!TOUCH_PAD[ndx].is_activated) {
+                // Ignore touch pads that are not currently activated.
+                touch_values[ndx] = 0;
+                continue;
+            }
+
 #if defined(TOUCH_VALUE_16_BIT)
             uint16_t tmp_u16;
             touch_pad_read_filtered(ndx, &tmp_u16);
             touch_values[ndx] = tmp_u16;
 #elif defined(TOUCH_VALUE_32_BIT)
             uint32_t tmp_u32;
-            touch_pad_filter_read_smooth(TOUCH_PAD[ndx], &tmp_u32);
+            touch_pad_filter_read_smooth(TOUCH_PAD[ndx].touch_pad_num, &tmp_u32);
             touch_values[ndx] = tmp_u32;
 #endif
         }
@@ -297,7 +316,12 @@ static void touch_filter_callback(uint16_t *raw_values, uint16_t *filtered_value
 {
     TouchValuesAverage_t::ValueArrayType touch_values;
     for (uint8_t ndx = 0; ndx < TOUCH_PAD_MAX; ++ndx) {
-        touch_values[ndx] = filtered_values[ndx];
+        if (TOUCH_PAD[ndx].is_activated) {
+            touch_values[ndx] = filtered_values[ndx];
+        } else {
+            // Ignore touch pads that are not currently activated.
+            touch_values[ndx] = 0;
+        }
     }
     handle_touch_values(touch_values);
 }
@@ -427,6 +451,18 @@ static void read_touch_pads_init_device()
 
 static void read_touch_pads_init_task(void *pvParameters)
 {
+#ifdef APP_DEBUG
+    // Determine which touch pads to Activate or deactivate.
+    // TODO: this information should be stored in the Nonvolatile Storage (NVS).
+    for (uint8_t ndx = FIRST_TOUCH_PAD_INDEX; ndx < TOUCH_PAD_MAX; ++ndx) {
+        if (ndx >= 1 && ndx <= 4) {
+            TOUCH_PAD[ndx].is_activated = true;
+        } else {
+            TOUCH_PAD[ndx].is_activated = false;
+        }
+    }
+#endif
+
     // Initialize touch pad peripheral.
     // The default fsm mode is software trigger mode.
     ESP_ERROR_CHECK(touch_pad_init());
@@ -440,7 +476,9 @@ static void read_touch_pads_init_task(void *pvParameters)
     // touch_pad_set_voltage(TOUCH_HVOLT_2V7, TOUCH_LVOLT_0V5, TOUCH_HVOLT_ATTEN_1V);
 
     for (uint8_t ndx = 0; ndx < TOUCH_PAD_MAX; ++ndx) {
-        TOUCH_PAD_CONFIG(TOUCH_PAD[ndx], TOUCH_THRESH_NO_USE);
+        if (TOUCH_PAD[ndx].is_activated) {
+            TOUCH_PAD_CONFIG(TOUCH_PAD[ndx].touch_pad_num, TOUCH_THRESH_NO_USE);
+        }
     }
 
     // This must be done after the above init's and config's.

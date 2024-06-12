@@ -94,7 +94,7 @@ public:
     }
 
 
-#ifdef DEBUG
+#if defined(DEBUG) || defined(APP_DEBUG)
     void debug_stream(std::ostream &stream) {
         stream << "array_sample_count:" << array_sample_count
                << ", number_of_bits: " << number_of_bits

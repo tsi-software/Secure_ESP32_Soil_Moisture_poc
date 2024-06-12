@@ -257,10 +257,11 @@ class WatchMqttMessages(mqtt.Client):
         logger.debug(message_str)
 
         if device_name == '#2':
-            if port_number == 1:
-                logger.info(message_str)
+            # if port_number == 1:
+            #     logger.info(message_str)
             # if port_number >= 1 and port_number <= 4:
             #     logger.info(message_str)
+            logger.info(message_str)
 
         # if device_name == '#4':
         #     if port_number == 2 or port_number == 1:
