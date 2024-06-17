@@ -211,6 +211,8 @@ class WatchMqttMessages(mqtt.Client):
         topic = msg.topic.split('/')
         if 'soilmoisture' == topic[0]:
             self.soilmoisture(topic, msg)
+        elif 'irrigation' == topic[0]:
+            self.irrigation(topic, msg)
 
     def on_publish(self, mqttc, obj, mid, reason_codes, properties):
         logger.debug("mid: "+str(mid))
@@ -256,16 +258,28 @@ class WatchMqttMessages(mqtt.Client):
 
         logger.debug(message_str)
 
-        if device_name == '#2':
-            # if port_number == 1:
-            #     logger.info(message_str)
-            # if port_number >= 1 and port_number <= 4:
-            #     logger.info(message_str)
+        # if device_name == '#2':
+        #     if port_number >= 1 and port_number <= 4:
+        #         logger.info(message_str)
+
+        # if device_name == '#3' or device_name == '#4':
+        #     if port_number >= 1 and port_number <= 4:
+        #         logger.info(message_str)
+
+        if port_number >= 1 and port_number <= 2:
             logger.info(message_str)
 
-        # if device_name == '#4':
-        #     if port_number == 2 or port_number == 1:
-        #         logger.info(message_str)
+
+    def irrigation(self, topic, msg):
+        """
+        """
+        event_timestamp = datetime.now(tz=timezone.utc)
+        event_time = datetime.fromtimestamp(event_timestamp, tz=timezone.utc).astimezone()
+        event_time_str = event_time.strftime('%Y-%m-%d %H:%M:%S')
+
+        message_str = f'{msg.topic} {msg.payload} {event_time_str}'
+        logger.info(message_str)
+
 
 
     def get_output_filename(self) -> os.PathLike:

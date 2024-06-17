@@ -484,6 +484,11 @@ static void read_touch_pads_init_task(void *pvParameters)
     // This must be done after the above init's and config's.
     read_touch_pads_init_device();
 
+#if defined(USE_TOUCH_TIMER_CALLBACK) && !defined(APP_DEBUG)
+    // Now that everything is ready, start the short timer.
+    ESP_ERROR_CHECK(esp_timer_start_periodic(short_sample_timer, short_sample_period));
+#endif
+
     // Handle timer events "Off" of the system Timer Task.
     // This function should never return.
     off_timer_task_handler();
