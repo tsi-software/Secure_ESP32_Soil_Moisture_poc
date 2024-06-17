@@ -19,5 +19,6 @@ echo "SCRIPT_DIR=$SCRIPT_DIR"
 
 set -x
 cd "$SCRIPT_DIR"
+sudo chown $USER: ../certificates ../private
 sudo chown --recursive $USER: ../certificates ../private
 chmod --recursive go-rwx ../certificates ../private
