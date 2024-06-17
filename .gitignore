@@ -46,6 +46,8 @@ soilmoisture_*.csv
 # sdkconfig may contain passwords.
 sdkconfig
 sdkconfig.*
+!sdkconfig.defaults
+!sdkconfig.defaults.*
 
 # Build directory
 build/
