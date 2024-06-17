@@ -7,6 +7,11 @@ app_globals.h
 #include "freertos/task.h"
 
 
+// #ifdef APP_DEBUG
+// # define DEBUG_TOUCH_PAD_NUMBER 1
+// #endif
+
+
 #ifdef __cplusplus
 extern "C" {
 #endif

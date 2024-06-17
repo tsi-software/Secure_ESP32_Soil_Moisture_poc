@@ -13,6 +13,8 @@ app_touch_pads.cpp
 #include "fast_array_average.hpp"
 
 
+// Defined in CMakeLists.txt: APP_DEBUG, DEBUG_TOUCH_PAD_NUMBER
+
 // Touch num 0 is denoise channel, please use `touch_pad_denoise_enable` to set denoise function.
 // Ignore touch pad 0, start from touch pad 1.
 #define FIRST_TOUCH_PAD_INDEX 1
@@ -46,6 +48,8 @@ app_touch_pads.cpp
 //  the new value to be posted a an event.
 #define UPDATE_THRESHOLD_VALUE 16
 
+static const UBaseType_t readTouchPadsTask_IndexToNotify = 1;
+
 ESP_EVENT_DEFINE_BASE(APP_TOUCH_EVENTS);
 
 static const char* LOG_TAG = "app_touch_pads";
@@ -74,25 +78,52 @@ static bool force_update = true;
 
 static esp_event_loop_handle_t event_loop_handle = NULL;
 
+#ifdef USE_TOUCH_TIMER_CALLBACK
+// - 'short_sample_timer' is the short period timer used to take many samples which are then averaged.
+// - this timer is stopped each time enough samples have been taken to get a good average.
+static esp_timer_handle_t short_sample_timer;
+static uint64_t short_sample_period; //(in microseconds) this must be based on the capacitive touch sensor parameters.
+#endif
 
-// see: github/espressif/esp-idf/components/hal/include/hal/touch_sensor_types.h
-static const touch_pad_t TOUCH_PAD[ TOUCH_PAD_MAX ] = {
-    TOUCH_PAD_NUM0,
-    TOUCH_PAD_NUM1,
-    TOUCH_PAD_NUM2,
-    TOUCH_PAD_NUM3,
-    TOUCH_PAD_NUM4,
-    TOUCH_PAD_NUM5,
-    TOUCH_PAD_NUM6,
-    TOUCH_PAD_NUM7,
-    TOUCH_PAD_NUM8,
-    TOUCH_PAD_NUM9,
+
+// - 'long_sample_timer' is the long period timer whose sole purpose is to restart the 'short_sample_timer'
+//    when the next batch of samples are to be started and averaged.
+static esp_timer_handle_t long_sample_timer;
+static uint64_t long_sample_period
+#ifdef APP_DEBUG
+    = 5 * 1000000; // every 5 seconds when debugging.
+#else
+    = 60 * 1000000; // every minute under normal use.
+#endif
+
+
+struct app_touch_pad_status {
+    app_touch_pad_status(touch_pad_t touch_pad_num, bool is_activated = true)
+        : touch_pad_num(touch_pad_num), is_activated(is_activated)
+    { }
+
+    // see: github/espressif/esp-idf/components/hal/include/hal/touch_sensor_types.h
+    touch_pad_t touch_pad_num;
+    bool is_activated;
+};
+
+static app_touch_pad_status TOUCH_PAD[ TOUCH_PAD_MAX ] {
+    app_touch_pad_status(TOUCH_PAD_NUM0, false),
+    app_touch_pad_status(TOUCH_PAD_NUM1),
+    app_touch_pad_status(TOUCH_PAD_NUM2),
+    app_touch_pad_status(TOUCH_PAD_NUM3),
+    app_touch_pad_status(TOUCH_PAD_NUM4),
+    app_touch_pad_status(TOUCH_PAD_NUM5),
+    app_touch_pad_status(TOUCH_PAD_NUM6),
+    app_touch_pad_status(TOUCH_PAD_NUM7),
+    app_touch_pad_status(TOUCH_PAD_NUM8),
+    app_touch_pad_status(TOUCH_PAD_NUM9),
 #if SOC_TOUCH_SENSOR_NUM > 10
-    TOUCH_PAD_NUM10,
-    TOUCH_PAD_NUM11,
-    TOUCH_PAD_NUM12,
-    TOUCH_PAD_NUM13,
-    TOUCH_PAD_NUM14
+    app_touch_pad_status(TOUCH_PAD_NUM10),
+    app_touch_pad_status(TOUCH_PAD_NUM11),
+    app_touch_pad_status(TOUCH_PAD_NUM12),
+    app_touch_pad_status(TOUCH_PAD_NUM13),
+    app_touch_pad_status(TOUCH_PAD_NUM14),
 #endif
 };
 
@@ -104,7 +135,7 @@ static void post_touch_values(TouchValuesAverage_t::ValueArrayType& touch_values
     time_t now = 0;
     time(&now);
 
-    ESP_LOGD(LOG_TAG, "post_touch_values");
+    ESP_LOGV(LOG_TAG, "post_touch_values");
 
     // Just incase force_update is changed while we are processing below.
     const bool local_force_update = force_update;
@@ -113,16 +144,32 @@ static void post_touch_values(TouchValuesAverage_t::ValueArrayType& touch_values
     TouchValue_t prior_value, new_value, diff;
 
     for (uint8_t ndx = FIRST_TOUCH_PAD_INDEX; ndx < TOUCH_PAD_MAX; ++ndx) {
+        if (!TOUCH_PAD[ndx].is_activated) {
+            // Ignore touch pads that are not currently activated.
+            continue;
+        }
+
         prior_value = prior_touch_value[ndx];
         new_value = touch_values[ndx];
         diff = prior_value > new_value ? prior_value - new_value : new_value - prior_value;
-        if (local_force_update || diff > UPDATE_THRESHOLD_VALUE) {
-            prior_touch_value[ndx] = new_value;
 
+#ifdef DEBUG_TOUCH_PAD_NUMBER
+        if (ndx == DEBUG_TOUCH_PAD_NUMBER) {
 #if defined(TOUCH_VALUE_32_BIT)
             ESP_LOGD(LOG_TAG, "touch - [%u] %lu (diff=%lu)", ndx, new_value, diff);
 #else
             ESP_LOGD(LOG_TAG, "touch - [%u] %u (diff=%u)", ndx, new_value, diff);
+#endif
+        }
+#endif // DEBUG_TOUCH_PAD_NUMBER
+
+        if (local_force_update || diff > UPDATE_THRESHOLD_VALUE) {
+            prior_touch_value[ndx] = new_value;
+
+#if defined(TOUCH_VALUE_32_BIT)
+            ESP_LOGV(LOG_TAG, "touch - [%u] %lu (diff=%lu)", ndx, new_value, diff);
+#else
+            ESP_LOGV(LOG_TAG, "touch - [%u] %u (diff=%u)", ndx, new_value, diff);
 #endif
 
             app_touch_value_change_event_payload payload = {};
@@ -156,65 +203,111 @@ static void post_touch_values(TouchValuesAverage_t::ValueArrayType& touch_values
 
 
 
-static void handle_touch_values(TouchValuesAverage_t::ValueArrayType& touch_values)
+enum class handle_touch_result { average_not_ready, average_ready };
+
+static handle_touch_result handle_touch_values(TouchValuesAverage_t::ValueArrayType& touch_values)
 {
+    handle_touch_result result = handle_touch_result::average_not_ready;
+
+#ifdef DEBUG_TOUCH_PAD_NUMBER
     ESP_LOGV(LOG_TAG, "handle_touch_values");
+# if defined(TOUCH_VALUE_32_BIT)
+    ESP_LOGV(LOG_TAG, "raw touch - [%u] %lu", DEBUG_TOUCH_PAD_NUMBER, touch_values[DEBUG_TOUCH_PAD_NUMBER]);
+# else
+    ESP_LOGV(LOG_TAG, "raw touch - [%u] %u", DEBUG_TOUCH_PAD_NUMBER, touch_values[DEBUG_TOUCH_PAD_NUMBER]);
+# endif
+#endif // DEBUG_TOUCH_PAD_NUMBER
+
     touchValuesAverage.add_values(touch_values);
 
     if (touchValuesAverage.is_average_ready()) {
+        result = handle_touch_result::average_ready;
         TouchValuesAverage_t::ValueArrayType average_values;
         touchValuesAverage.get_average_values(average_values);
+
+#ifdef DEBUG_TOUCH_PAD_NUMBER
+# if defined(TOUCH_VALUE_32_BIT)
+        ESP_LOGV(LOG_TAG, "avg touch - [%u] %lu", DEBUG_TOUCH_PAD_NUMBER, average_values[DEBUG_TOUCH_PAD_NUMBER]);
+# else
+        ESP_LOGV(LOG_TAG, "avg touch - [%u] %u", DEBUG_TOUCH_PAD_NUMBER, average_values[DEBUG_TOUCH_PAD_NUMBER]);
+# endif
+#endif // DEBUG_TOUCH_PAD_NUMBER
+
         post_touch_values(average_values);
+    }
+
+    return result;
+}
+
+
+
+static void off_timer_task_handler()
+{
+    // Handle timer events "Off" of the system Timer Task.
+
+    while(true) {
+        // Wait for the short timer and do the following processing on this Task
+        // rather than on the Timer Task which really does NOT want to get bogged down.
+        //ulTaskNotifyTakeIndexed(readTouchPadsTask_IndexToNotify, pdTRUE, portMAX_DELAY);
+        BaseType_t wait_result = xTaskNotifyWaitIndexed(readTouchPadsTask_IndexToNotify, 0, ULONG_MAX, NULL, portMAX_DELAY);
+        if (!wait_result) {
+            // The notification timed-out. Ingore and wait again.
+            continue;
+        }
+        ESP_LOGV(LOG_TAG, "OffTimerTask SHORT timer event...");
+
+        // Note: don't instantiate 'touch_values' on the stack because it takes up a bit too much space.
+        static TouchValuesAverage_t::ValueArrayType touch_values;
+
+        for (uint8_t ndx = FIRST_TOUCH_PAD_INDEX; ndx < TOUCH_PAD_MAX; ++ndx) {
+            if (!TOUCH_PAD[ndx].is_activated) {
+                // Ignore touch pads that are not currently activated.
+                touch_values[ndx] = 0;
+                continue;
+            }
+
+#if defined(TOUCH_VALUE_16_BIT)
+            uint16_t tmp_u16;
+            touch_pad_read_filtered(ndx, &tmp_u16);
+            touch_values[ndx] = tmp_u16;
+#elif defined(TOUCH_VALUE_32_BIT)
+            uint32_t tmp_u32;
+            touch_pad_filter_read_smooth(TOUCH_PAD[ndx].touch_pad_num, &tmp_u32);
+            touch_values[ndx] = tmp_u32;
+#endif
+        }
+
+        handle_touch_result handle_touch_result = handle_touch_values(touch_values);
+        if (handle_touch_result::average_ready == handle_touch_result) {
+            esp_timer_stop(short_sample_timer);
+            ESP_LOGV(LOG_TAG, "OffTimerTask restart touch sample averaging.");
+        }
     }
 }
 
 
 
 #ifdef USE_TOUCH_TIMER_CALLBACK
-static void touch_timer_callback(void *arg)
+static void short_sample_timer_callback(void *arg)
 {
-    TouchValuesAverage_t::ValueArrayType touch_values;
-
-    for (uint8_t ndx = FIRST_TOUCH_PAD_INDEX; ndx < TOUCH_PAD_MAX; ++ndx) {
-#if defined(TOUCH_VALUE_16_BIT)
-        uint16_t tmp_u16;
-        touch_pad_read_filtered(ndx, &tmp_u16);
-        touch_values[ndx] = tmp_u16;
-#elif defined(TOUCH_VALUE_32_BIT)
-        uint32_t tmp_u32;
-        touch_pad_filter_read_smooth(TOUCH_PAD[ndx], &tmp_u32);
-        touch_values[ndx] = tmp_u32;
-#endif
-    }
-
-    handle_touch_values(touch_values);
+    // Handle timer events "Off" of the system Timer Task.
+    // Do the heavy lifing on the task specified in 'arg'.
+    TaskHandle_t taskToNotify = static_cast<TaskHandle_t>(arg);
+    //xTaskNotifyGiveIndexed(taskToNotify, readTouchPadsTask_IndexToNotify);
+    xTaskNotifyIndexed(taskToNotify, readTouchPadsTask_IndexToNotify, 1, eSetValueWithoutOverwrite);
 }
-#endif
+#endif // USE_TOUCH_TIMER_CALLBACK
 
 
 
-/****
-#ifdef USE_APP_TIMER_HANDLER
-static void app_timer_tick_handler(void* handler_args, esp_event_base_t base, int32_t id, void* event_data)
+static void long_sample_timer_callback(void *arg)
 {
-    TouchValuesAverage_t::ValueArrayType touch_values;
-
-    for (uint8_t ndx = FIRST_TOUCH_PAD_INDEX; ndx < TOUCH_PAD_MAX; ++ndx) {
-#if defined(TOUCH_VALUE_16_BIT)
-        uint16_t tmp_u16;
-        touch_pad_read_filtered(ndx, &tmp_u16);
-        touch_values[ndx] = tmp_u16;
-#elif defined(TOUCH_VALUE_32_BIT)
-        uint32_t tmp_u32;
-        touch_pad_filter_read_smooth(TOUCH_PAD[ndx], &tmp_u32);
-        touch_values[ndx] = tmp_u32;
+#ifdef USE_TOUCH_TIMER_CALLBACK
+    // Restart the short_sample_timer regardless of whether it is running or not.
+    esp_timer_stop(short_sample_timer);
+    ESP_ERROR_CHECK(esp_timer_start_periodic(short_sample_timer, short_sample_period));
 #endif
-    }
-
-    handle_touch_values(touch_values);
 }
-#endif
-****/
 
 
 
@@ -223,7 +316,12 @@ static void touch_filter_callback(uint16_t *raw_values, uint16_t *filtered_value
 {
     TouchValuesAverage_t::ValueArrayType touch_values;
     for (uint8_t ndx = 0; ndx < TOUCH_PAD_MAX; ++ndx) {
-        touch_values[ndx] = filtered_values[ndx];
+        if (TOUCH_PAD[ndx].is_activated) {
+            touch_values[ndx] = filtered_values[ndx];
+        } else {
+            // Ignore touch pads that are not currently activated.
+            touch_values[ndx] = 0;
+        }
     }
     handle_touch_values(touch_values);
 }
@@ -271,26 +369,32 @@ static void read_touch_pads_init_device()
     //---------------------------------------------------------------------
 
 #ifdef USE_TOUCH_TIMER_CALLBACK
-    esp_timer_create_args_t periodic_timer_args = {};
-    periodic_timer_args.callback = &touch_timer_callback;
-    periodic_timer_args.arg = (void *)event_loop_handle;
-    periodic_timer_args.name = "touch_timer";
-
-    static esp_timer_handle_t periodic_timer;
-    ESP_ERROR_CHECK(esp_timer_create(&periodic_timer_args, &periodic_timer));
-
     // Start the timer so that we average the sample values over 1 second.
-    ESP_ERROR_CHECK(esp_timer_start_periodic(periodic_timer, 1000000 / touchValuesAverage.sample_size));
-    ESP_LOGI(LOG_TAG, "Touch Timer Started");
+    // 1000000 microseconds = 1 second
+    short_sample_period = 1000000 / touchValuesAverage.sample_size;
+
+    { // Short Sample Timer.
+        esp_timer_create_args_t periodic_timer_args = {};
+        periodic_timer_args.callback = &short_sample_timer_callback;
+        periodic_timer_args.arg = (void *)xTaskGetCurrentTaskHandle();
+        periodic_timer_args.name = "short_sample_timer";
+        periodic_timer_args.skip_unhandled_events = true;
+        ESP_ERROR_CHECK(esp_timer_create(&periodic_timer_args, &short_sample_timer));
+        // NOTE: the 'short_sample_timer' is started by the 'long_sample_timer' at the prescribed intervals.
+    }
 #endif
 
-    // ESP_ERROR_CHECK(esp_event_handler_instance_register_with(
-    //         event_loop_handle,
-    //         APP_TIMER_EVENTS, APP_TIMER_TICK_EVENT,
-    //         app_timer_tick_handler,
-    //         event_loop_handle,
-    //         NULL
-    // ));
+    { // Long Sample Timer.
+        esp_timer_create_args_t periodic_timer_args = {};
+        periodic_timer_args.callback = &long_sample_timer_callback;
+        //periodic_timer_args.arg = (void *)event_loop_handle;
+        periodic_timer_args.name = "long_sample_timer";
+        periodic_timer_args.skip_unhandled_events = true;
+        ESP_ERROR_CHECK(esp_timer_create(&periodic_timer_args, &long_sample_timer));
+        ESP_ERROR_CHECK(esp_timer_start_periodic(long_sample_timer, long_sample_period));
+    }
+
+    ESP_LOGI(LOG_TAG, "Touch Timers Started");
 }
 
 
@@ -347,6 +451,18 @@ static void read_touch_pads_init_device()
 
 static void read_touch_pads_init_task(void *pvParameters)
 {
+#ifdef APP_DEBUG
+    // Determine which touch pads to Activate or deactivate.
+    // TODO: this information should be stored in the Nonvolatile Storage (NVS).
+    for (uint8_t ndx = FIRST_TOUCH_PAD_INDEX; ndx < TOUCH_PAD_MAX; ++ndx) {
+        if (ndx >= 1 && ndx <= 4) {
+            TOUCH_PAD[ndx].is_activated = true;
+        } else {
+            TOUCH_PAD[ndx].is_activated = false;
+        }
+    }
+#endif
+
     // Initialize touch pad peripheral.
     // The default fsm mode is software trigger mode.
     ESP_ERROR_CHECK(touch_pad_init());
@@ -360,13 +476,25 @@ static void read_touch_pads_init_task(void *pvParameters)
     // touch_pad_set_voltage(TOUCH_HVOLT_2V7, TOUCH_LVOLT_0V5, TOUCH_HVOLT_ATTEN_1V);
 
     for (uint8_t ndx = 0; ndx < TOUCH_PAD_MAX; ++ndx) {
-        TOUCH_PAD_CONFIG(TOUCH_PAD[ndx], TOUCH_THRESH_NO_USE);
+        if (TOUCH_PAD[ndx].is_activated) {
+            TOUCH_PAD_CONFIG(TOUCH_PAD[ndx].touch_pad_num, TOUCH_THRESH_NO_USE);
+        }
     }
 
-    // This must be done last.
+    // This must be done after the above init's and config's.
     read_touch_pads_init_device();
 
-    // This task has now finished doing what it needs to do.
+#if defined(USE_TOUCH_TIMER_CALLBACK) && !defined(APP_DEBUG)
+    // Now that everything is ready, start the short timer.
+    ESP_ERROR_CHECK(esp_timer_start_periodic(short_sample_timer, short_sample_period));
+#endif
+
+    // Handle timer events "Off" of the system Timer Task.
+    // This function should never return.
+    off_timer_task_handler();
+
+    // This point should not be reached, but if it is, clean up the task properly.
+    ESP_LOGW(LOG_TAG, "read_touch_pads_init Task ENDED!");
     vTaskDelete(NULL);
 }
 
@@ -378,5 +506,6 @@ void app_read_touch_pads_init(esp_event_loop_handle_t event_loop)
     // Create a new task for initializing the touch pads so that we can
     // put in a delay to wait for the touch pad filters to start doing there thing.
     // TODO: usStackDepth should be better fine tuned.
-    xTaskCreate(read_touch_pads_init_task, "read_touch_pads_init", 2048, NULL, uxTaskPriorityGet(NULL), NULL);
+    // original stack size = 2048
+    xTaskCreate(read_touch_pads_init_task, "app_read_touch_pads", 1024*3, NULL, uxTaskPriorityGet(NULL), NULL);
 }
