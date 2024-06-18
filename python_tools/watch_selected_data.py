@@ -273,10 +273,8 @@ class WatchMqttMessages(mqtt.Client):
     def irrigation(self, topic, msg):
         """
         """
-        event_timestamp = datetime.now(tz=timezone.utc)
-        event_time = datetime.fromtimestamp(event_timestamp, tz=timezone.utc).astimezone()
-        event_time_str = event_time.strftime('%Y-%m-%d %H:%M:%S')
-
+        event_datetime = datetime.now(tz=timezone.utc)
+        event_time_str = event_datetime.astimezone().strftime('%Y-%m-%d %H:%M:%S')
         message_str = f'{msg.topic} {msg.payload} {event_time_str}'
         logger.info(message_str)
 
