@@ -80,7 +80,7 @@ class WatchMqttMessages:
         self.tls_params = tls_params
         self.protocol = aiomqtt.ProtocolVersion.V5
         #self.protocol = aiomqtt.ProtocolVersion.V311
-        self.mqtt_topic = self.config.get('TOPIC', fallback='/soilmoisture/#')
+        self.mqtt_topic = self.config.get('TOPIC', fallback='soilmoisture/#')
 
 
     def __repr__(self) -> str:
@@ -247,7 +247,7 @@ class WatchMqttMessages:
 #-------------------------------------------------------------------------------
 def commandLineArgs():
     parser = argparse.ArgumentParser(
-            description='Listen for, and display, MQTT messages with the Topic "/soilmoisture/#"'
+            description='Listen for, and display, MQTT messages with the Topic "soilmoisture/#"'
         )
     parser.add_argument("--active", default=ACTIVE_CERTIFICATES_FILENAME,  help="Active Certificates Filename. (default: %(default)s)")
     #parser.add_argument("--config", default=DEFAULT_CONFIG_FILENAME,  help="Configuration filename. (default: %(default)s)")

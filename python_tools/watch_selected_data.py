@@ -119,7 +119,7 @@ def get_connection_parameters(config_vars, certs_dir):
         'port': config_vars.getint('PORT', fallback=8883),
         'tls_params': tls_params,
         'protocol': mqtt.MQTTv5,
-        'mqtt_topic': config_vars.get('TOPIC', fallback='/soilmoisture/#'),
+        'mqtt_topic': config_vars.get('TOPIC', fallback='soilmoisture/#'),
     }
     # ... or ...
     # mqtt.MQTTv311
@@ -360,7 +360,7 @@ class WatchMqttMessages(mqtt.Client):
 #-------------------------------------------------------------------------------
 def commandLineArgs():
     parser = argparse.ArgumentParser(
-            description='Listen for, and display, MQTT messages with the Topic "/soilmoisture/#"'
+            description='Listen for, and display, MQTT messages with the Topic "soilmoisture/#"'
         )
     parser.add_argument("--active", default=ACTIVE_CERTIFICATES_FILENAME,  help="Active Certificates Filename. (default: %(default)s)")
     #parser.add_argument("--config", default=DEFAULT_CONFIG_FILENAME,  help="Configuration filename. (default: %(default)s)")

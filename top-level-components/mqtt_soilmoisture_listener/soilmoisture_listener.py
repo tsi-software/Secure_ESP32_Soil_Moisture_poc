@@ -52,7 +52,7 @@ class SaveMqttMessages:
         self.tls_params = tls_params
         self.protocol = aiomqtt.ProtocolVersion.V5
         #self.protocol = aiomqtt.ProtocolVersion.V311
-        self.mqtt_topic = self.config.get('MQTT Connection', 'topic', fallback='/soilmoisture/#')
+        self.mqtt_topic = self.config.get('MQTT Connection', 'topic', fallback='soilmoisture/#')
 
         self.output_dir = Path(self.config.get('Output', 'output_dir', fallback='output_data'))
         self.output_filename_prefix = self.config.get('Output', 'filename_prefix', fallback='soilmoisture_')
@@ -215,7 +215,7 @@ class SaveMqttMessages:
 #-------------------------------------------------------------------------------
 def commandLineArgs():
     parser = argparse.ArgumentParser(
-            description='Listen for, and save, MQTT messages with the Topic "/soilmoisture/#"'
+            description='Listen for, and save, MQTT messages with the Topic "soilmoisture/#"'
         )
     parser.add_argument("--config", default=DEFAULT_CONFIG_FILENAME,  help="Configuration filename. (default: %(default)s)")
     parser.add_argument("--debug", action="store_true", help="Run in debug mode.")

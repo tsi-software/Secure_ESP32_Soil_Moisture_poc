@@ -58,19 +58,19 @@ mosquitto_sub --verbose \
 # mosquitto_sub --verbose \
 #   --host ${MQTT_HOST} --port 8883 \
 #   --cafile ${CERT_PATH}/mosq_ca.crt --cert ${CERT_PATH}/mosq_client.crt --key ${CERT_PATH}/mosq_client.key \
-#   --topic '/soilmoisture/517b462f-34ba-4c10-a41a-2310a8acd626/capacitive/11' \
-#   --topic '/soilmoisture/517b462f-34ba-4c10-a41a-2310a8acd626/capacitive/12' \
-#   --topic '/soilmoisture/517b462f-34ba-4c10-a41a-2310a8acd626/capacitive/13' \
-#   --topic '/soilmoisture/517b462f-34ba-4c10-a41a-2310a8acd626/capacitive/14' \
+#   --topic 'soilmoisture/517b462f-34ba-4c10-a41a-2310a8acd626/capacitive/11' \
+#   --topic 'soilmoisture/517b462f-34ba-4c10-a41a-2310a8acd626/capacitive/12' \
+#   --topic 'soilmoisture/517b462f-34ba-4c10-a41a-2310a8acd626/capacitive/13' \
+#   --topic 'soilmoisture/517b462f-34ba-4c10-a41a-2310a8acd626/capacitive/14' \
 #   --topic '+'  --topic '/+'
 
 # mosquitto_sub --verbose \
 #   --host ${MQTT_HOST} --port 8883 \
 #   --cafile ${CERT_PATH}/mosq_ca.crt --cert ${CERT_PATH}/mosq_client.crt --key ${CERT_PATH}/mosq_client.key \
-#   --topic '/soilmoisture/6f1ef23f-b061-4f05-b59d-c68158e7d966/capacitive/14' \
-#   --topic '/soilmoisture/6f1ef23f-b061-4f05-b59d-c68158e7d966/capacitive/12' \
-#   --topic '/soilmoisture/6f1ef23f-b061-4f05-b59d-c68158e7d966/capacitive/10' \
-#   --topic '/soilmoisture/6f1ef23f-b061-4f05-b59d-c68158e7d966/capacitive/8'  \
+#   --topic 'soilmoisture/6f1ef23f-b061-4f05-b59d-c68158e7d966/capacitive/14' \
+#   --topic 'soilmoisture/6f1ef23f-b061-4f05-b59d-c68158e7d966/capacitive/12' \
+#   --topic 'soilmoisture/6f1ef23f-b061-4f05-b59d-c68158e7d966/capacitive/10' \
+#   --topic 'soilmoisture/6f1ef23f-b061-4f05-b59d-c68158e7d966/capacitive/8'  \
 #   --topic '+'  --topic '/+'
 
 

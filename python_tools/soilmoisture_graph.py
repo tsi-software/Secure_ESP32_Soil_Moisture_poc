@@ -124,7 +124,7 @@ def plot_sensor_data(args, config, sensor_data):
     """
     """
     plot_data = sensor_data \
-        [sensor_data['sensor_id'] != '/soilmoisture/1/capacitive/9'] \
+        [sensor_data['sensor_id'] != 'soilmoisture/1/capacitive/9'] \
         .sort_values(by='utc_date') \
         .pivot(columns='sensor_id', index='utc_date', values='sensor_value')
     plot_data.plot(kind='line')
