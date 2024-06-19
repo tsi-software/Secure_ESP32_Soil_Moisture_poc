@@ -275,7 +275,8 @@ class WatchMqttMessages(mqtt.Client):
         """
         event_datetime = datetime.now(tz=timezone.utc)
         event_time_str = event_datetime.astimezone().strftime('%Y-%m-%d %H:%M:%S')
-        message_str = f'{msg.topic} {msg.payload} {event_time_str}'
+        payload_str = msg.payload.decode('ascii')
+        message_str = f'{msg.topic} {payload_str} {event_time_str}'
         logger.info(message_str)
 
 
