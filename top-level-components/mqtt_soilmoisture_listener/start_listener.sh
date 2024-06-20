@@ -32,6 +32,7 @@ docker build --rm --pull --tag ${DOCKER_TAG} .
 #   --volume "${SCRIPT_DIR}/../../output_data":/soilmoisture_listener/output_data \
 #   ${DOCKER_TAG}
 
+#TODO: this command is temporary and should be removed in favor of the command just above.
 docker run --rm --name ${CONTAINER_NAME} --detach \
   --env "TZ=${TZ}" \
   --volume "${SCRIPT_DIR}/private":/soilmoisture_listener/private \

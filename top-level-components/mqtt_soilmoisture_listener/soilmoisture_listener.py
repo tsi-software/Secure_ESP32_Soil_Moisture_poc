@@ -120,21 +120,22 @@ class SaveMqttMessages:
         """
         logger.info(f'listen_for_moisture_values(...)\n{self}')
 
+        # see:
+        # https://sbtinstruments.github.io/aiomqtt/subscribing-to-a-topic.html
         async with aiomqtt.Client(
             hostname=self.hostname,
             port=self.port,
             tls_params=self.tls_params,
             protocol=self.protocol
         ) as client:
-            async with client.messages() as messages:
-                await client.subscribe(self.mqtt_topic)
-                async for message in messages:
-                    msg_str = '{},{}'.format(
-                        message.topic.value,
-                        message.payload.decode('utf-8')
-                    )
-                    await mqtt_listen_queue.put(msg_str)
-                    logger.info('message: ' + msg_str)
+            await client.subscribe(self.mqtt_topic)
+            async for message in client.messages:
+                msg_str = '{},{}'.format(
+                    message.topic.value,
+                    message.payload.decode('utf-8')
+                )
+                await mqtt_listen_queue.put(msg_str)
+                logger.info('message: ' + msg_str)
 
 
     async def save_values_to_file(self, mqtt_listen_queue: QueueType):
