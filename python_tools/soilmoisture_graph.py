@@ -10,7 +10,7 @@
 
 import argparse
 import configparser
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, tzinfo
 import logging
 import os
 import matplotlib.pyplot as plt
@@ -27,9 +27,8 @@ DEFAULT_CONFIG_FILENAME = 'config.ini'
 
 
 #-------------------------------------------------------------------------------
-def from_unix_epoch(unix_timestamp):
-    return pd.Timestamp(unix_timestamp, unit='s', tz=timezone.utc)
-
+def from_utc_timestamp(utc_timestamp):
+    return datetime.fromtimestamp(int(utc_timestamp), tz=timezone.utc)
 
 
 def get_data_dir(args, config):
@@ -63,7 +62,8 @@ def get_data_filenames(args, config):
     now = datetime.now(timezone.utc)
 
     sensor_data_dir = Path(get_data_dir(args, config))
-    filename_format = 'soilmoisture_{}.csv'
+    filename_format = 'soilmoisture_{}*.csv'
+    # filename_format = 'soilmoisture_{}.csv' # The old way...
 
     logger.debug('now: ' + now.strftime('%Y-%m-%d'))
     logger.debug(f'{args.days=}')
@@ -77,13 +77,19 @@ def get_data_filenames(args, config):
     # sensor_data_filenames = [
     #     sensor_data_dir / 'soilmoisture_2023-11-14.csv',
     #     sensor_data_dir / 'soilmoisture_2023-11-15.csv',
+    #     sensor_data_dir / 'soilmoisture_2024-06-19_PDT.csv',
     # ]
     sensor_data_filenames = []
     for sample_date in sample_dates:
-        # e.g. sensor_data_dir / 'soilmoisture_2023-11-14.csv'
-        sample_file = sensor_data_dir / filename_format.format(sample_date.strftime('%Y-%m-%d'))
-        if sample_file.exists():
+        # e.g. sensor_data_dir / 'soilmoisture_2023-11-14_PDT.csv'
+        sample_files = sensor_data_dir.glob( filename_format.format(sample_date.strftime('%Y-%m-%d')) )
+        for sample_file in sample_files:
             sensor_data_filenames.append(sample_file)
+        #
+        # The old way...
+        # sample_file = sensor_data_dir / filename_format.format(sample_date.strftime('%Y-%m-%d'))
+        # if sample_file.exists():
+        #     sensor_data_filenames.append(sample_file)
     #
     logger.info('sensor_data_filenames:\n{}'.format(pformat(sensor_data_filenames)))
 
@@ -97,7 +103,7 @@ def read_sensor_data(args, config):
     dataframes = []
     for filename in get_data_filenames(args, config):
         sensor_data = pd.read_csv(filename)
-        sensor_data['utc_date'] = sensor_data['utc_timestamp'].apply(from_unix_epoch)
+        sensor_data['utc_date'] = sensor_data['utc_timestamp'].apply(from_utc_timestamp)
         #sensor_data = sensor_data.drop(columns='utc_timestamp')
         dataframes.append(sensor_data)
 
