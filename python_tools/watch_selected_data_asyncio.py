@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# watch_selected_data.py
+# watch_selected_data_asyncio.py
 # Written for python 3.11
 #
 # Setup:
@@ -27,7 +27,6 @@ logger = logging.getLogger('watch_selected_data_asyncio')
 QueueType: TypeAlias = type(asyncio.Queue)
 
 ACTIVE_CERTIFICATES_FILENAME = 'active_certificates.vars'
-#DEFAULT_CONFIG_FILENAME = 'config.ini'
 
 
 
@@ -77,8 +76,6 @@ def read_config_file(args):
 def get_active_certificates_vars(config_vars) -> str:
     """
     """
-    #config_vars = read_config_file(args)
-
     active_cert_vars = config_vars.get('ACTIVE_CERTIFICATES_DIR', fallback='')
     logger.debug(f'active_cert_vars: {active_cert_vars}')
     if active_cert_vars:
@@ -127,9 +124,6 @@ def get_connection_parameters(config_vars, certs_dir):
         'protocol': aiomqtt.ProtocolVersion.V5,
         'mqtt_topic': config_vars.get('TOPIC', fallback='soilmoisture/#'),
     }
-    # ... or ...
-    # mqtt.MQTTv311
-    # mqtt.MQTTv31
 
 
 
@@ -175,82 +169,6 @@ class WatchMqttMessages:
         return pformat(tmp)
 
 
-    # def get_active_certificate_vars(self) -> str:
-    #     """
-    #     """
-    #     # Check the config file for a certificate directory.
-    #     # cert_dir = self.config.get('MQTT Connection', 'cert_dir', fallback='')
-    #     # if cert_dir and os.path.isdir(cert_dir):
-    #     #     return cert_dir
-
-    #     # Try various directories named 'private'...
-    #     common_dirs = (
-    #         './private',
-    #         '../private',
-    #         '../../private',
-    #         '~/private',
-    #     )
-    #     for dir_str in common_dirs:
-    #         test_dir = Path(dir_str)
-    #         logger.debug(f'private test_dir: {test_dir}')
-
-    #         if test_dir.is_dir():
-    #             vars_file = test_dir / self.args.active
-    #             logger.debug(f'vars_file: {vars_file}')
-    #             if vars_file.is_file():
-    #                 self.config = read_vars_file(vars_file)
-
-    #                 active_cert_vars = self.config.get('ACTIVE_CERTIFICATES_DIR', fallback='')
-    #                 logger.debug(f'active_cert_vars: {active_cert_vars}')
-    #                 if active_cert_vars:
-    #                     return active_cert_vars
-
-    #     raise Exception('Active Certificates NOT FOUND!')
-
-
-    # def get_active_certificates_dir(self, active_certificates) -> os.PathLike:
-    #     """
-    #     """
-    #     # Try various directories named 'private'...
-    #     common_dirs = (
-    #         './certificates',
-    #         '../certificates',
-    #         '../../certificates',
-    #         '~/certificates',
-    #     )
-    #     for dir_str in common_dirs:
-    #         test_dir = Path(dir_str)
-    #         logger.debug(f'certificates test_dir: {test_dir}')
-
-    #         if test_dir.is_dir():
-    #             certs_dir = test_dir / active_certificates
-    #             logger.debug(f'certs_dir: {certs_dir}')
-    #             return certs_dir
-
-    #     raise Exception('Active Certificates Dir NOT FOUND!')
-
-
-    # def get_output_filename(self) -> os.PathLike:
-    #     """
-    #     Return a filename based on the current date.
-    #     """
-    #     now = datetime.now(timezone.utc)
-    #     filename = now.strftime(self.output_filename_prefix + "%Y-%m-%d.csv")
-    #     #filename = 'soilmoisture_2023-11-10.csv'
-    #     return self.output_dir / filename
-
-
-    # def get_output_header(self) -> str:
-    #     """
-    #     Return the header row of the output file.
-    #     This will be needed later when the csv file is processed.
-    #     For this later processing, it is important to NOT have spaces around the commas because
-    #       some systems take those spaces literally and use them in the data column name.
-    #     """
-    #     return 'sensor_id,sensor_value,utc_timestamp'
-
-
-    #async def listen_for_moisture_values(self, mqtt_listen_queue):
     async def listen_for_moisture_values(self, mqtt_listen_queue: QueueType):
         """
         """
@@ -271,11 +189,10 @@ class WatchMqttMessages:
                     message.payload.decode('utf-8')
                 )
 
-                logger.info('message: ' + msg_str)
+                logger.debug('put message: ' + msg_str)
                 await mqtt_listen_queue.put(msg_str)
 
 
-    #async def save_values_to_file(self, mqtt_listen_queue):
     async def save_values_to_file(self, mqtt_listen_queue: QueueType):
         """
         """
@@ -285,7 +202,7 @@ class WatchMqttMessages:
             # asynchronously wait for the next queued value.
             logger.debug(f'waiting for queue...\n')
             value_to_save = await mqtt_listen_queue.get()
-            logger.debug('got: ' + value_to_save)
+            logger.info('message: ' + value_to_save)
 
             try:
                 pass
@@ -310,18 +227,11 @@ class WatchMqttMessages:
         """
         """
         logger.debug(f'start()\n{self}')
-        #mqtt_listen_queue = asyncio.Queue()
         mqtt_listen_queue: QueueType = asyncio.Queue()
 
         async with asyncio.TaskGroup() as task_group:
             task_group.create_task(self.listen_for_moisture_values(mqtt_listen_queue))
             task_group.create_task(self.save_values_to_file(mqtt_listen_queue))
-
-        #task1 = asyncio.create_task( self.listen_for_moisture_values(mqtt_listen_queue) )
-        #task2 = asyncio.create_task( self.save_values_to_file(mqtt_listen_queue) )
-        # ...
-        #await task1
-        #await task2
 
 
 #-------------------------------------------------------------------------------
