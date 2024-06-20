@@ -9,7 +9,6 @@ WORKDIR /python_tools
 COPY requirements.txt  /python_tools/
 RUN python3 -m pip install --requirement requirements.txt
 
-COPY *.sh *.py *.ini *.txt  /python_tools/
-
+#COPY *.sh *.py *.ini *.txt  /python_tools/
 #ENTRYPOINT ["python3", "/python_tools/watch_selected_data.py"]
 CMD ["bash"]

@@ -18,7 +18,7 @@ echo "TZ=$TZ"
 echo "SCRIPT=$SCRIPT"
 
 DOCKER_TAG=python_tools:v0.0.1
-CONTAINER_NAME=soil
+CONTAINER_NAME=soil_console
 
 echo "$NOW"
 
@@ -29,6 +29,7 @@ docker build --rm --pull --tag ${DOCKER_TAG} .
 
 docker run --rm --interactive --tty --name ${CONTAINER_NAME} \
   --env "TZ=${TZ}" \
+  --volume "${SCRIPT_DIR}":/python_tools \
   --volume "${SCRIPT_DIR}/../certificates":/python_tools/certificates \
   --volume "${SCRIPT_DIR}/../private":/python_tools/private \
   --volume "${SCRIPT_DIR}/../private/active_certificates.vars":/python_tools/active_certificates.vars \
