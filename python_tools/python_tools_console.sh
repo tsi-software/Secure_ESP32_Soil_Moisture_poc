@@ -12,6 +12,10 @@ declare -rx SCRIPT=${0##*/}
 SCRIPT_DIR=$(dirname "${0}")
 SCRIPT_DIR=$(realpath "${SCRIPT_DIR}")
 NOW=$(date +"%Y-%m-%d_%H-%M")
+TZ=$(cat /etc/timezone)
+echo "$NOW"
+echo "TZ=$TZ"
+echo "SCRIPT=$SCRIPT"
 
 DOCKER_TAG=python_tools:v0.0.1
 CONTAINER_NAME=soil
@@ -24,6 +28,7 @@ set -x
 docker build --rm --pull --tag ${DOCKER_TAG} .
 
 docker run --rm --interactive --tty --name ${CONTAINER_NAME} \
+  --env "TZ=${TZ}" \
   --volume "${SCRIPT_DIR}/../certificates":/python_tools/certificates \
   --volume "${SCRIPT_DIR}/../private":/python_tools/private \
   --volume "${SCRIPT_DIR}/../private/active_certificates.vars":/python_tools/active_certificates.vars \

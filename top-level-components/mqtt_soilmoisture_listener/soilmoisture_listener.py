@@ -99,9 +99,9 @@ class SaveMqttMessages:
         """
         Return a filename based on the current date.
         """
-        now = datetime.now(timezone.utc)
-        filename = now.strftime(self.output_filename_prefix + "%Y-%m-%d.csv")
-        #filename = 'soilmoisture_2023-11-10.csv'
+        now = datetime.now(timezone.utc).astimezone()
+        filename = now.strftime(self.output_filename_prefix + "%Y-%m-%d_%Z.csv")
+        #e.g. filename = 'soilmoisture_2023-11-10_PST.csv'
         return self.output_dir / filename
 
 

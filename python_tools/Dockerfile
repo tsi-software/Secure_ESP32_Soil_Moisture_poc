@@ -1,6 +1,9 @@
 FROM python:3.11-slim
 #FROM python:3.11
-RUN python3 -m pip install --upgrade pip
+
+RUN apt-get update  \
+  && apt-get install -y locales tzdata  \
+  && python3 -m pip install --upgrade pip
 
 WORKDIR /python_tools
 COPY requirements.txt  /python_tools/

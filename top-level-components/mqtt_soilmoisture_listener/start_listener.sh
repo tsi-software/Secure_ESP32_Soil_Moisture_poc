@@ -12,11 +12,13 @@ declare -rx SCRIPT=${0##*/}
 SCRIPT_DIR=$(dirname "${0}")
 SCRIPT_DIR=$(realpath "${SCRIPT_DIR}")
 NOW=$(date +"%Y-%m-%d_%H-%M")
+TZ=$(cat /etc/timezone)
+echo "$NOW"
+echo "TZ=$TZ"
+echo "SCRIPT=$SCRIPT"
 
 DOCKER_TAG=soilmoisture_listener:v0.0.1
 CONTAINER_NAME=soil
-
-echo "$NOW"
 
 cd "${SCRIPT_DIR}"
 set -x
@@ -24,12 +26,14 @@ set -x
 docker build --rm --pull --tag ${DOCKER_TAG} .
 
 # docker run --rm --name ${CONTAINER_NAME} --detach \
+#   --env "TZ=${TZ}" \
 #   --volume "${SCRIPT_DIR}/../../private":/soilmoisture_listener/private \
 #   --volume "${SCRIPT_DIR}/../../private/config.ini":/soilmoisture_listener/config.ini \
 #   --volume "${SCRIPT_DIR}/../../output_data":/soilmoisture_listener/output_data \
 #   ${DOCKER_TAG}
 
 docker run --rm --name ${CONTAINER_NAME} --detach \
+  --env "TZ=${TZ}" \
   --volume "${SCRIPT_DIR}/private":/soilmoisture_listener/private \
   --volume "${SCRIPT_DIR}/private/config.ini":/soilmoisture_listener/config.ini \
   --volume "${SCRIPT_DIR}/../../output_data":/soilmoisture_listener/output_data \
