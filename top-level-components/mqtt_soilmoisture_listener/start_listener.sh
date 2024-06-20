@@ -23,12 +23,19 @@ set -x
 
 docker build --rm --pull --tag ${DOCKER_TAG} .
 
+# docker run --rm --name ${CONTAINER_NAME} --detach \
+#   --volume "${SCRIPT_DIR}/../../private":/soilmoisture_listener/private \
+#   --volume "${SCRIPT_DIR}/../../private/config.ini":/soilmoisture_listener/config.ini \
+#   --volume "${SCRIPT_DIR}/../../output_data":/soilmoisture_listener/output_data \
+#   ${DOCKER_TAG}
+
 docker run --rm --name ${CONTAINER_NAME} --detach \
-  --volume "${SCRIPT_DIR}/../../private":/soilmoisture_listener/private \
-  --volume "${SCRIPT_DIR}/../../private/config.ini":/soilmoisture_listener/config.ini \
+  --volume "${SCRIPT_DIR}/private":/soilmoisture_listener/private \
+  --volume "${SCRIPT_DIR}/private/config.ini":/soilmoisture_listener/config.ini \
   --volume "${SCRIPT_DIR}/../../output_data":/soilmoisture_listener/output_data \
-  ${DOCKER_TAG} \
-  && docker container logs ${CONTAINER_NAME} --follow
+  ${DOCKER_TAG}
+
+docker container logs ${CONTAINER_NAME} --follow
 
 # To gain shell access:
 #docker exec -it soil /bin/bash
