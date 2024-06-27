@@ -266,7 +266,7 @@ class WatchMqttMessages(mqtt.Client):
         #     if port_number >= 1 and port_number <= 4:
         #         logger.info(message_str)
 
-        if port_number >= 1 and port_number <= 2:
+        if port_number >= 1 and port_number <= 4:
             logger.info(message_str)
 
 

@@ -11,6 +11,7 @@
 import argparse
 import configparser
 from datetime import datetime, timedelta, timezone, tzinfo
+import json
 import logging
 import os
 import matplotlib.pyplot as plt
@@ -63,14 +64,13 @@ def get_data_filenames(args, config):
 
     sensor_data_dir = Path(get_data_dir(args, config))
     filename_format = 'soilmoisture_{}*.csv'
-    # filename_format = 'soilmoisture_{}.csv' # The old way...
 
     logger.debug('now: ' + now.strftime('%Y-%m-%d'))
     logger.debug(f'{args.days=}')
 
     # Add 1 to the 'number of days' in case that one day earlier happens to contain "spill-over" data.
     # This also handles UTC data converted to another timezone.
-    sample_dates = [now-timedelta(days=day) for day in range(args.days+1)]
+    sample_dates = [now-timedelta(days=day) for day in range(args.days)]
     logger.debug('sample_dates:\n{}'.format(pformat(sample_dates)))
 
     # e.g.
@@ -85,11 +85,6 @@ def get_data_filenames(args, config):
         sample_files = sensor_data_dir.glob( filename_format.format(sample_date.strftime('%Y-%m-%d')) )
         for sample_file in sample_files:
             sensor_data_filenames.append(sample_file)
-        #
-        # The old way...
-        # sample_file = sensor_data_dir / filename_format.format(sample_date.strftime('%Y-%m-%d'))
-        # if sample_file.exists():
-        #     sensor_data_filenames.append(sample_file)
     #
     logger.info('sensor_data_filenames:\n{}'.format(pformat(sensor_data_filenames)))
 
@@ -130,9 +125,19 @@ def plot_sensor_data(args, config, sensor_data):
     """
     """
     plot_data = sensor_data \
-        [sensor_data['sensor_id'] != 'soilmoisture/1/capacitive/9'] \
+        [sensor_data.sensor_id.str.startswith('soilmoisture/517b462f-34ba-4c10-a41a-2310a8acd626/')] \
         .sort_values(by='utc_date') \
         .pivot(columns='sensor_id', index='utc_date', values='sensor_value')
+
+        #[sensor_data.sensor_id.str.startswith('soilmoisture/3f36213a-ec4b-43ea-8a85-ac6098fac883/')] \
+        #[sensor_data['sensor_id'].str.startswith('soilmoisture/3f36213a-ec4b-43ea-8a85-ac6098fac883/')] \
+        #[sensor_data['sensor_id'] != 'soilmoisture/1/capacitive/9'] \
+
+    print(plot_data.index)
+    print(plot_data.columns)
+    print(plot_data.head())
+    print(plot_data.tail())
+
     plot_data.plot(kind='line')
     plt.show()
 
