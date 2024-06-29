@@ -1,0 +1,96 @@
+{
+    "sensors": [
+        {
+            "uuid": "05446845-5f69-4323-9061-ac2d5069992c",
+            "name": "#1",
+            "hardware": {
+                "chip": "ESP32-S3",
+                "description": "ESP32-S3-DevKitC-1 N16R8 N8R2, Original S3 N16R8"
+            }
+        },
+        {
+            "uuid": "3f36213a-ec4b-43ea-8a85-ac6098fac883",
+            "name": "#2",
+            "hardware": {
+                "chip": "ESP32-S3",
+                "description": "ESP32-S3-DevKitC-1 N16R8 N8R2, Original S3 N16R8"
+            },
+            "touch sensor": [
+                {
+                    "port": 1,
+                    "label": "1",
+                    "color": "LightBlue",
+                    "dry threshold": null,
+                    "wet threshold": null
+                },
+                {
+                    "port": 2,
+                    "label": "2",
+                    "color": "Blue",
+                    "dry threshold": null,
+                    "wet threshold": null
+                },
+                {
+                    "port": 3,
+                    "label": "3",
+                    "color": "unused",
+                    "dry threshold": null,
+                    "wet threshold": null
+                },
+                {
+                    "port": 4,
+                    "label": "4",
+                    "color": "DarkBlue",
+                    "dry threshold": null,
+                    "wet threshold": null
+                }
+            ]
+        },
+        {
+            "uuid": "517b462f-34ba-4c10-a41a-2310a8acd626",
+            "name": "#3",
+            "hardware": {
+                "chip": "ESP32-S2",
+                "description": "ESP32-S2FN4R2 ESP32-S2 4MB Flash, USB Type-C, with PSRAM 2PCS"
+            },
+            "touch sensor": [
+                {
+                    "port": 1,
+                    "label": "1",
+                    "color": "Orange",
+                    "dry threshold": null,
+                    "wet threshold": null
+                },
+                {
+                    "port": 2,
+                    "label": "2",
+                    "color": "Blue",
+                    "dry threshold": null,
+                    "wet threshold": null
+                },
+                {
+                    "port": 3,
+                    "label": "3",
+                    "color": "LightOrange",
+                    "dry threshold": null,
+                    "wet threshold": null
+                },
+                {
+                    "port": 4,
+                    "label": "4",
+                    "color": "LightBlue",
+                    "dry threshold": null,
+                    "wet threshold": null
+                }
+            ]
+        },
+        {
+            "uuid": "3fcfc9da-f6b7-4815-841f-d822e1cf7180",
+            "name": "#4",
+            "hardware": {
+                "chip": "ESP32-S2",
+                "description": "ESP32-S2FN4R2 ESP32-S2 4MB Flash, USB Type-C, with PSRAM 2PCS"
+            }
+        }
+    ]
+}
