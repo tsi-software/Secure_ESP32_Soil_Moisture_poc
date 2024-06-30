@@ -121,31 +121,12 @@ class SensorMetaData:
             if bool(group):
                 result.append(group)
 
-        logger.info(pformat(result))
+        logger.debug(pformat(result))
         return result
 
-        # group = []
-        # result = []
-        # previous_name = ''
-        # first_time = True
-        #
-        # for touch_sensor in self.iterate_touch_sensors():
-        #     sensor_label = self.format_touch_sensor_label(touch_sensor['name'], touch_sensor['label'])
-        #     if previous_name != touch_sensor['name'] or first_time:
-        #         first_time = False
-        #         previous_name = touch_sensor['name']
-        #         group = [ sensor_label ]
-        #         result.append(group)
-        #     else:
-        #         group.append(sensor_label)
-        #
-        # logger.info(pformat(result))
-        # return result
 
 
-
-    #TODO: rename to get_touch_sensor_colors(self)
-    def get_line_colors(self):
+    def get_touch_sensor_colors(self):
         """
         Return a dictionary of touch_sensor labels and their colors.
         Example:
@@ -168,7 +149,7 @@ class SensorMetaData:
 
                 result[sensor_label] = color
 
-        logger.info(pformat(result))
+        logger.debug(pformat(result))
         return result
 
 
