@@ -21,7 +21,7 @@ from pathlib import Path
 from pprint import pformat
 #from typing import TypeAlias
 
-from sensor_meta_data import SensorMetaData
+from controller_meta_data import ControllerMetaData
 
 logger = logging.getLogger('soilmoisture_graph')
 
@@ -97,7 +97,7 @@ def from_utc_timestamp(utc_timestamp):
 
 
 
-def read_sensor_data(args, config, sensor_metadata):
+def read_sensor_data(args, config, controller_metadata):
     """
     """
     dataframes = []
@@ -106,17 +106,17 @@ def read_sensor_data(args, config, sensor_metadata):
         sensor_data['utc_date'] = sensor_data['utc_timestamp'].apply(from_utc_timestamp)
 
         # Add new columns based on the values encoded in sensor_id.
-        sensor_data['sensor_uuid'] = sensor_data['sensor_id'].apply(
-            lambda sensor_id: sensor_metadata.from_sensor_id(sensor_id, 'sensor_uuid')
+        sensor_data['controller_uuid'] = sensor_data['sensor_id'].apply(
+            lambda sensor_id: controller_metadata.from_sensor_id(sensor_id, 'controller_uuid')
         )
-        sensor_data['sensor_name'] = sensor_data['sensor_id'].apply(
-            lambda sensor_id: sensor_metadata.from_sensor_id(sensor_id, 'sensor_name')
+        sensor_data['controller_name'] = sensor_data['sensor_id'].apply(
+            lambda sensor_id: controller_metadata.from_sensor_id(sensor_id, 'controller_name')
         )
         sensor_data['sensor_port'] = sensor_data['sensor_id'].apply(
-            lambda sensor_id: sensor_metadata.from_sensor_id(sensor_id, 'sensor_port')
+            lambda sensor_id: controller_metadata.from_sensor_id(sensor_id, 'sensor_port')
         )
         sensor_data['sensor_label'] = sensor_data['sensor_id'].apply(
-            lambda sensor_id: sensor_metadata.from_sensor_id(sensor_id, 'sensor_label')
+            lambda sensor_id: controller_metadata.from_sensor_id(sensor_id, 'sensor_label')
         )
 
         #sensor_data = sensor_data.drop(columns='utc_timestamp')
@@ -141,13 +141,13 @@ def read_sensor_data(args, config, sensor_metadata):
 
 
 
-def plot_sensor_data(args, config, sensor_data, sensor_metadata):
+def plot_sensor_data(args, config, sensor_data, controller_metadata):
     """
     """
     plot_data = sensor_data
-    #plot_data = sensor_data[(sensor_data.sensor_name == '#3') & (sensor_data.sensor_port == 4)]
+    #plot_data = sensor_data[(sensor_data.controller_name == '#3') & (sensor_data.sensor_port == 4)]
 
-        #[sensor_data.sensor_name == '#2'] \
+        #[sensor_data.controller_name == '#2'] \
         #[sensor_data.sensor_id.str.startswith('soilmoisture/517b462f-34ba-4c10-a41a-2310a8acd626/')] \
         #[sensor_data.sensor_id.str.startswith('soilmoisture/3f36213a-ec4b-43ea-8a85-ac6098fac883/')] \
         #[sensor_data['sensor_id'].str.startswith('soilmoisture/3f36213a-ec4b-43ea-8a85-ac6098fac883/')] \
@@ -168,8 +168,8 @@ def plot_sensor_data(args, config, sensor_data, sensor_metadata):
     # https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.plot.html
     matplotlib_axes = plot_data.plot(
         kind = 'line',
-        subplots = sensor_metadata.get_subplot_groups(),
-        color = sensor_metadata.get_touch_sensor_colors(),
+        subplots = controller_metadata.get_subplot_groups(),
+        color = controller_metadata.get_touch_sensor_colors(),
         sharex = True,
         sharey = False,
     )
@@ -201,11 +201,11 @@ def main(args) -> None:
     config = configparser.ConfigParser()
     config.read(args.config)
 
-    sensor_metadata = SensorMetaData('controller-meta-data.json')
+    controller_metadata = ControllerMetaData('controller-meta-data.json')
 
-    sensor_data = read_sensor_data(args, config, sensor_metadata)
+    sensor_data = read_sensor_data(args, config, controller_metadata)
     print('')
-    plot_sensor_data(args, config, sensor_data, sensor_metadata)
+    plot_sensor_data(args, config, sensor_data, controller_metadata)
     print('')
 
 

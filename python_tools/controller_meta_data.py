@@ -1,45 +1,45 @@
 # -*- coding: utf-8 -*-
-# sensor_meta_data.py
+# controller_meta_data.py
 #
 
 import json
 import logging
 from pprint import pformat
 
-logger = logging.getLogger('sensor_meta_data')
+logger = logging.getLogger('controller_meta_data')
 
 
 
-class SensorMetaData:
+class ControllerMetaData:
     """
     """
 
     def __init__(self, json_filename):
         """
         """
-        # sensor_info_cache is keyed on the full sensor_id, not just the uuid.
-        self.sensor_info_cache = {}
+        # controller_info_cache is keyed on the full sensor_id, not just the uuid.
+        self.controller_info_cache = {}
 
         with open(json_filename) as json_fp:
             self.raw_json_data = json.load(json_fp)
 
 
 
-    def format_touch_sensor_label(self, sensor_name, sensor_port):
+    def format_touch_sensor_label(self, controller_name, sensor_port):
         """
         """
-        return f'{sensor_name} ({sensor_port})'
+        return f'{controller_name} ({sensor_port})'
 
 
 
-    def find_sensor_uuid(self, sensor_uuid):
+    def find_controller_uuid(self, controller_uuid):
         """
         """
-        for sensor in self.raw_json_data['controllers']:
-            if sensor['uuid'] == sensor_uuid:
-                return sensor
+        for controller in self.raw_json_data['controllers']:
+            if controller['uuid'] == controller_uuid:
+                return controller
 
-        logger.warning('find_sensor_uuid(...): "{}" NOT FOUND!'.format(sensor_uuid))
+        logger.warning('find_controller_uuid(...): "{}" NOT FOUND!'.format(controller_uuid))
         return None
 
 
@@ -47,31 +47,30 @@ class SensorMetaData:
     def from_sensor_id(self, sensor_id, fieldname):
         """
         """
-        if sensor_id not in self.sensor_info_cache:
-            # Populate 'self.sensor_info_cache' for the given 'sensor_id'.
+        if sensor_id not in self.controller_info_cache:
+            # Populate 'self.controller_info_cache' for the given 'sensor_id'.
             #   example sensor_id:
             #   soilmoisture/517b462f-34ba-4c10-a41a-2310a8acd626/touchpad/1
             parts = sensor_id.split('/')
-            sensor_uuid = parts[1]
+            controller_uuid = parts[1]
             sensor_port = int(parts[3])
 
-            metadata = self.find_sensor_uuid(sensor_uuid)
+            metadata = self.find_controller_uuid(controller_uuid)
             if metadata:
-                sensor_name = metadata['name']
+                controller_name = metadata['name']
             else:
-                sensor_name = sensor_uuid
+                controller_name = controller_uuid
 
-            sensor_label = self.format_touch_sensor_label(sensor_name, sensor_port)
-            #sensor_label = f'{sensor_name} ({sensor_port})'
+            sensor_label = self.format_touch_sensor_label(controller_name, sensor_port)
 
-            self.sensor_info_cache[sensor_id] = {
-                'sensor_uuid': sensor_uuid,
-                'sensor_name': sensor_name,
+            self.controller_info_cache[sensor_id] = {
+                'controller_uuid': controller_uuid,
+                'controller_name': controller_name,
                 'sensor_port': sensor_port,
                 'sensor_label': sensor_label,
             }
 
-        return self.sensor_info_cache[sensor_id][fieldname]
+        return self.controller_info_cache[sensor_id][fieldname]
 
 
 
