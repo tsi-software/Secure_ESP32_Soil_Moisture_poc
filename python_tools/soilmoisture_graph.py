@@ -201,7 +201,7 @@ def main(args) -> None:
     config = configparser.ConfigParser()
     config.read(args.config)
 
-    sensor_metadata = SensorMetaData('sensor-meta-data.json')
+    sensor_metadata = SensorMetaData('controller-meta-data.json')
 
     sensor_data = read_sensor_data(args, config, sensor_metadata)
     print('')
