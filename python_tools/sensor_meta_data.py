@@ -25,6 +25,13 @@ class SensorMetaData:
 
 
 
+    def format_touch_sensor_label(self, sensor_name, sensor_port):
+        """
+        """
+        return f'{sensor_name} ({sensor_port})'
+
+
+
     def find_sensor_uuid(self, sensor_uuid):
         """
         """
@@ -54,7 +61,8 @@ class SensorMetaData:
             else:
                 sensor_name = sensor_uuid
 
-            sensor_label = f'{sensor_name} ({sensor_port})'
+            sensor_label = self.format_touch_sensor_label(sensor_name, sensor_port)
+            #sensor_label = f'{sensor_name} ({sensor_port})'
 
             self.sensor_info_cache[sensor_id] = {
                 'sensor_uuid': sensor_uuid,
@@ -64,6 +72,72 @@ class SensorMetaData:
             }
 
         return self.sensor_info_cache[sensor_id][fieldname]
+
+
+
+    def iterate_sensors(self):
+        """
+        """
+        for sensor in self.raw_json_data['sensors']:
+            yield sensor
+
+
+
+    def iterate_touch_sensors(self):
+        """
+        """
+        key = 'touch_sensors'
+
+        for sensor in self.iterate_sensors():
+            if key not in sensor:
+                # This chip is not configured with Touch Sensors.
+                continue
+
+            sensor_copy = sensor.copy()
+            del sensor_copy[key]
+
+            for touch_sensor in sensor[key]:
+                yield sensor_copy | touch_sensor
+
+
+
+    def get_subplot_groups(self):
+        """
+        Example:
+        return [
+            ('#2 (1)', '#2 (2)', '#2 (3)', '#2 (4)'),
+            ('#3 (1)', '#3 (2)', '#3 (3)', '#3 (4)'),
+        ]
+        """
+        group = []
+        result = []
+        previous_name = ''
+        first_time = True
+
+        for touch_sensor in self.iterate_touch_sensors():
+            sensor_label = self.format_touch_sensor_label(touch_sensor['name'], touch_sensor['label'])
+            if previous_name != touch_sensor['name'] or first_time:
+                first_time = False
+                previous_name = touch_sensor['name']
+                group = [ sensor_label ]
+                result.append(group)
+            else:
+                group.append(sensor_label)
+
+        logger.info(pformat(result))
+
+        return result
+
+
+
+    def get_line_colors(self):
+        """
+        """
+        #JUST TESTING!
+        return {
+            '#2 (1)':'blue', '#2 (2)':'orange', '#2 (3)':'green', '#2 (4)':'red',
+            '#3 (1)':'black', '#3 (2)':'cyan', '#3 (3)':'green', '#3 (4)':'red',
+        }
 
 
 
