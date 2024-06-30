@@ -101,13 +101,15 @@ def find_sensor_meta_data(sensor_uuid, sensor_meta_data):
 
 
 def from_sensor_id(sensor_id, fieldname, sensor_meta_data, sensor_info_cache):
+    """
+    """
     if sensor_id not in sensor_info_cache:
         # Populate the 'sensor_info_cache' for 'sensor_id'
         #   example sensor_id:
         #   soilmoisture/517b462f-34ba-4c10-a41a-2310a8acd626/touchpad/1
         parts = sensor_id.split('/')
         sensor_uuid = parts[1]
-        sensor_port = parts[3]
+        sensor_port = int(parts[3])
 
         metadata = find_sensor_meta_data(sensor_uuid, sensor_meta_data)
         if metadata:
@@ -128,6 +130,8 @@ def from_sensor_id(sensor_id, fieldname, sensor_meta_data, sensor_info_cache):
 
 
 def from_utc_timestamp(utc_timestamp):
+    """
+    """
     return datetime.fromtimestamp(int(utc_timestamp), tz=timezone.utc)
 
 
@@ -173,15 +177,8 @@ def read_sensor_data(args, config, sensor_meta_data):
 def plot_sensor_data(args, config, sensor_data):
     """
     """
-    # print(sensor_data.index)
-    # print(sensor_data.columns)
-    # print(sensor_data.head())
-    # print(sensor_data.tail())
-
-    plot_data = sensor_data \
-        [sensor_data.sensor_name == '#2'] \
-        .sort_values(by='utc_date') \
-        .pivot(columns='sensor_label', index='utc_date', values='sensor_value')
+    plot_data = sensor_data
+    #plot_data = sensor_data[(sensor_data.sensor_name == '#3') & (sensor_data.sensor_port == 4)]
 
         #[sensor_data.sensor_name == '#2'] \
         #[sensor_data.sensor_id.str.startswith('soilmoisture/517b462f-34ba-4c10-a41a-2310a8acd626/')] \
@@ -189,12 +186,40 @@ def plot_sensor_data(args, config, sensor_data):
         #[sensor_data['sensor_id'].str.startswith('soilmoisture/3f36213a-ec4b-43ea-8a85-ac6098fac883/')] \
         #[sensor_data['sensor_id'] != 'soilmoisture/1/capacitive/9'] \
 
+    plot_data = plot_data \
+        .sort_values(by='utc_date') \
+        .pivot(columns='sensor_label', index='utc_date', values='sensor_value')
+
     # print(plot_data.index)
     # print(plot_data.columns)
     # print(plot_data.head())
     # print(plot_data.tail())
 
-    plot_data.plot(kind='line')
+    # see:
+    # https://pandas.pydata.org/docs/user_guide/visualization.html
+    # https://pandas.pydata.org/docs/user_guide/cookbook.html#plotting
+    # https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.plot.html
+    matplotlib_axes = plot_data.plot(
+        kind = 'line',
+        subplots = [
+            ('#2 (1)', '#2 (2)', '#2 (3)', '#2 (4)'),
+            ('#3 (1)', '#3 (2)', '#3 (3)', '#3 (4)')
+        ],
+        sharex = True,
+        sharey = False,
+        color  = {
+            '#2 (1)':'blue', '#2 (2)':'orange', '#2 (3)':'green', '#2 (4)':'red',
+            '#3 (1)':'black', '#3 (2)':'cyan', '#3 (3)':'green', '#3 (4)':'red',
+        },
+    )
+    #color  = ('Red', 'Green', 'Blue', 'Orange', 'black', 'pink', 'cyan', 'yellow'),
+    #layout = (1,2), #(rows,cols)
+
+    # https://pandas.pydata.org/docs/user_guide/visualization.html#automatic-date-tick-adjustment
+    # Iterate each subplot.
+    for ax in matplotlib_axes:
+        ax.figure.autofmt_xdate()
+
     plt.show()
 
 
