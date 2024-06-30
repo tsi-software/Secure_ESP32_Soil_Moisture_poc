@@ -21,11 +21,11 @@ from pathlib import Path
 from pprint import pformat
 #from typing import TypeAlias
 
+from sensor_meta_data import SensorMetaData
+
 logger = logging.getLogger('soilmoisture_graph')
 
 DEFAULT_CONFIG_FILENAME = 'config.ini'
-
-sensor_meta_data = {}
 
 
 
@@ -89,44 +89,44 @@ def get_data_filenames(args, config):
     return sensor_data_filenames
 
 
-def find_sensor_meta_data(sensor_uuid, sensor_meta_data):
-    """
-    """
-    for sensor in sensor_meta_data['sensors']:
-        if sensor['uuid'] == sensor_uuid:
-            return sensor
+# def find_sensor_metadata(sensor_uuid, sensor_metadata):
+#     """
+#     """
+#     for sensor in sensor_metadata['sensors']:
+#         if sensor['uuid'] == sensor_uuid:
+#             return sensor
+#
+#     logger.warning('find_sensor_metadata(...): "{}" NOT FOUND!'.format(sensor_uuid))
+#     return None
 
-    logger.warning('find_sensor_meta_data(...): "{}" NOT FOUND!'.format(sensor_uuid))
-    return None
 
-
-def from_sensor_id(sensor_id, fieldname, sensor_meta_data, sensor_info_cache):
-    """
-    """
-    if sensor_id not in sensor_info_cache:
-        # Populate the 'sensor_info_cache' for 'sensor_id'
-        #   example sensor_id:
-        #   soilmoisture/517b462f-34ba-4c10-a41a-2310a8acd626/touchpad/1
-        parts = sensor_id.split('/')
-        sensor_uuid = parts[1]
-        sensor_port = int(parts[3])
-
-        metadata = find_sensor_meta_data(sensor_uuid, sensor_meta_data)
-        if metadata:
-            sensor_name = metadata['name']
-        else:
-            sensor_name = sensor_uuid
-
-        sensor_label = f'{sensor_name} ({sensor_port})'
-
-        sensor_info_cache[sensor_id] = {
-            'sensor_uuid': sensor_uuid,
-            'sensor_name': sensor_name,
-            'sensor_port': sensor_port,
-            'sensor_label': sensor_label,
-        }
-
-    return sensor_info_cache[sensor_id][fieldname]
+# def from_sensor_id(sensor_id, fieldname, sensor_metadata, sensor_info_cache):
+#     """
+#     """
+#     if sensor_id not in sensor_info_cache:
+#         # Populate the 'sensor_info_cache' for 'sensor_id'
+#         #   example sensor_id:
+#         #   soilmoisture/517b462f-34ba-4c10-a41a-2310a8acd626/touchpad/1
+#         parts = sensor_id.split('/')
+#         sensor_uuid = parts[1]
+#         sensor_port = int(parts[3])
+#
+#         metadata = find_sensor_metadata(sensor_uuid, sensor_metadata)
+#         if metadata:
+#             sensor_name = metadata['name']
+#         else:
+#             sensor_name = sensor_uuid
+#
+#         sensor_label = f'{sensor_name} ({sensor_port})'
+#
+#         sensor_info_cache[sensor_id] = {
+#             'sensor_uuid': sensor_uuid,
+#             'sensor_name': sensor_name,
+#             'sensor_port': sensor_port,
+#             'sensor_label': sensor_label,
+#         }
+#
+#     return sensor_info_cache[sensor_id][fieldname]
 
 
 def from_utc_timestamp(utc_timestamp):
@@ -135,19 +135,34 @@ def from_utc_timestamp(utc_timestamp):
     return datetime.fromtimestamp(int(utc_timestamp), tz=timezone.utc)
 
 
-def read_sensor_data(args, config, sensor_meta_data):
+def read_sensor_data(args, config, sensor_metadata):
     """
     """
     # sensor_info_cache is keyed on the full sensor_id.
-    sensor_info_cache = {}
+    #sensor_info_cache = {}
+
     dataframes = []
     for filename in get_data_filenames(args, config):
         sensor_data = pd.read_csv(filename)
         sensor_data['utc_date'] = sensor_data['utc_timestamp'].apply(from_utc_timestamp)
-        sensor_data['sensor_uuid'] = sensor_data['sensor_id'].apply(from_sensor_id, args=('sensor_uuid', sensor_meta_data, sensor_info_cache))
-        sensor_data['sensor_name'] = sensor_data['sensor_id'].apply(from_sensor_id, args=('sensor_name', sensor_meta_data, sensor_info_cache))
-        sensor_data['sensor_port'] = sensor_data['sensor_id'].apply(from_sensor_id, args=('sensor_port', sensor_meta_data, sensor_info_cache))
-        sensor_data['sensor_label'] = sensor_data['sensor_id'].apply(from_sensor_id, args=('sensor_label', sensor_meta_data, sensor_info_cache))
+
+        sensor_data['sensor_uuid'] = sensor_data['sensor_id'].apply(
+            lambda sensor_id: sensor_metadata.from_sensor_id(sensor_id, 'sensor_uuid')
+        )
+        sensor_data['sensor_name'] = sensor_data['sensor_id'].apply(
+            lambda sensor_id: sensor_metadata.from_sensor_id(sensor_id, 'sensor_name')
+        )
+        sensor_data['sensor_port'] = sensor_data['sensor_id'].apply(
+            lambda sensor_id: sensor_metadata.from_sensor_id(sensor_id, 'sensor_port')
+        )
+        sensor_data['sensor_label'] = sensor_data['sensor_id'].apply(
+            lambda sensor_id: sensor_metadata.from_sensor_id(sensor_id, 'sensor_label')
+        )
+        # sensor_data['sensor_uuid'] = sensor_data['sensor_id'].apply(from_sensor_id, args=('sensor_uuid', sensor_metadata, sensor_info_cache))
+        # sensor_data['sensor_name'] = sensor_data['sensor_id'].apply(from_sensor_id, args=('sensor_name', sensor_metadata, sensor_info_cache))
+        # sensor_data['sensor_port'] = sensor_data['sensor_id'].apply(from_sensor_id, args=('sensor_port', sensor_metadata, sensor_info_cache))
+        # sensor_data['sensor_label'] = sensor_data['sensor_id'].apply(from_sensor_id, args=('sensor_label', sensor_metadata, sensor_info_cache))
+
         #sensor_data = sensor_data.drop(columns='utc_timestamp')
 
         #print(sensor_data.columns)
@@ -241,11 +256,14 @@ def main(args) -> None:
     config = configparser.ConfigParser()
     config.read(args.config)
 
-    with open('sensors.json') as json_fp:
-        sensor_meta_data = json.load(json_fp)
+    sensor_metadata = SensorMetaData('sensor-meta-data.json')
+    # with open('sensor-meta-data.json') as json_fp:
+    #     sensor_metadata = json.load(json_fp)
 
-    sensor_data = read_sensor_data(args, config, sensor_meta_data)
+    sensor_data = read_sensor_data(args, config, sensor_metadata)
+    print('')
     plot_sensor_data(args, config, sensor_data)
+    print('')
 
 
 
