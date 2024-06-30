@@ -1,9 +1,9 @@
 {
-    "sensors": [
+    "controllers": [
         {
             "uuid": "05446845-5f69-4323-9061-ac2d5069992c",
             "name": "#1",
-            "hardware": {
+            "specs": {
                 "chip": "ESP32-S3",
                 "description": "ESP32-S3-DevKitC-1 N16R8 N8R2, Original S3 N16R8"
             }
@@ -11,7 +11,7 @@
         {
             "uuid": "3f36213a-ec4b-43ea-8a85-ac6098fac883",
             "name": "#2",
-            "hardware": {
+            "specs": {
                 "chip": "ESP32-S3",
                 "description": "ESP32-S3-DevKitC-1 N16R8 N8R2, Original S3 N16R8"
             },
@@ -33,7 +33,6 @@
                 {
                     "port": 3,
                     "label": "3",
-                    "color": "unused",
                     "dry_threshold": null,
                     "wet_threshold": null
                 },
@@ -49,7 +48,7 @@
         {
             "uuid": "517b462f-34ba-4c10-a41a-2310a8acd626",
             "name": "#3",
-            "hardware": {
+            "specs": {
                 "chip": "ESP32-S2",
                 "description": "ESP32-S2FN4R2 ESP32-S2 4MB Flash, USB Type-C, with PSRAM 2PCS"
             },
@@ -71,7 +70,7 @@
                 {
                     "port": 3,
                     "label": "3",
-                    "color": "LightOrange",
+                    "color": "Moccasin",
                     "dry_threshold": null,
                     "wet_threshold": null
                 },
@@ -87,7 +86,7 @@
         {
             "uuid": "3fcfc9da-f6b7-4815-841f-d822e1cf7180",
             "name": "#4",
-            "hardware": {
+            "specs": {
                 "chip": "ESP32-S2",
                 "description": "ESP32-S2FN4R2 ESP32-S2 4MB Flash, USB Type-C, with PSRAM 2PCS"
             }
