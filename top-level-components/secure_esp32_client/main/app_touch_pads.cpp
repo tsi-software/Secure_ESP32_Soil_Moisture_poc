@@ -453,6 +453,7 @@ static void read_touch_pads_init_task(void *pvParameters)
 {
 #ifdef APP_DEBUG
     // Determine which touch pads to Activate or deactivate.
+    // NOTE: 'is_activated' defaults to true when first initialized.
     // TODO: this information should be stored in the Nonvolatile Storage (NVS).
     for (uint8_t ndx = FIRST_TOUCH_PAD_INDEX; ndx < TOUCH_PAD_MAX; ++ndx) {
         if (ndx >= 1 && ndx <= 4) {
