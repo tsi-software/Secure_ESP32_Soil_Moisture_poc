@@ -12,14 +12,10 @@ import asyncio
 import aiofiles
 import aiomqtt
 import argparse
-#import configparser
 from datetime import timedelta, datetime, tzinfo, timezone
-#from itertools import chain
 import logging
 import os
-#from pathlib import Path
 from pprint import pformat
-#import ssl
 
 import soilmoisture_config_utils as config_utils
 
@@ -30,6 +26,56 @@ ACTIVE_CERTIFICATES_FILENAME = 'active_certificates.vars'
 # Python >= 10
 #from typing import TypeAlias
 #QueueType: TypeAlias = type(asyncio.Queue)
+
+
+
+#-------------------------------------------------------------------------------
+class SoilMoistureTouchpadMessage:
+    """
+    Example MQTT 'topic payload':
+    'soilmoisture/3f36213a-ec4b-43ea-8a85-ac6098fac883/touchpad/2 21086,1719948977'
+    """
+    def __init__(self, mqtt_message):
+        logger.debug(repr(mqtt_message.topic))
+        logger.debug(repr(mqtt_message.payload))
+
+        self.valid = False
+        self.mqtt_message = mqtt_message
+        self.topic_parts = mqtt_message.topic.value.split('/')
+
+        if 'soilmoisture' != self.topic_parts[0] or 'touchpad' != self.topic_parts[2]:
+            # Not Valid.
+            return
+
+        self.controller_uuid = self.topic_parts[1]
+        self.touchpad = int(self.topic_parts[3])
+
+        touch_value, touch_timestamp = mqtt_message.payload.decode('ascii').split(',')
+        self.touch_value = int(touch_value)
+        self.touch_timestamp = int(touch_timestamp)
+        self.touch_datetime = datetime.fromtimestamp(self.touch_timestamp, tz=timezone.utc).astimezone()
+        self.touch_datetime_str = self.touch_datetime.strftime('%Y-%m-%d %H:%M:%S')
+
+        self.message_str = f'Touch Pad: controller={self.controller_uuid}, touchpad={self.touchpad} value={self.touch_value}, {self.touch_datetime_str}'
+        self.valid = True
+
+
+    def __repr__(self) -> str:
+        tmp = {
+            'controller_uuid': self.controller_uuid,
+            'touchpad': self.touchpad,
+            'touch_value': self.touch_value,
+            'touch_datetime_str': self.touch_datetime_str,
+        }
+        return pformat(tmp)
+
+
+    def __str__(self) -> str:
+        return  self.message_str
+
+
+    def is_valid(self):
+        return self.valid
 
 
 
@@ -100,43 +146,29 @@ class WatchMqttMessages:
                 if self.cancelled:
                     raise asyncio.CancelledError()
 
-                msg_str = '{},{}'.format(
-                    message.topic.value,
-                    message.payload.decode('utf-8')
-                )
-                logger.debug('put message: ' + msg_str)
-                await mqtt_listen_queue.put(msg_str)
+                touchpad_msg = SoilMoistureTouchpadMessage(message)
+                if touchpad_msg.is_valid():
+                    logger.debug(f'put SoilMoistureTouchpadMessage {touchpad_msg}')
+                    await mqtt_listen_queue.put(touchpad_msg)
+                else:
+                    msg_str = '{},{}'.format(
+                        message.topic.value,
+                        message.payload.decode('utf-8')
+                    )
+                    logger.debug(f'put generic message {msg_str}')
+                    await mqtt_listen_queue.put(msg_str)
 
 
     async def save_values_to_file(self, mqtt_listen_queue):
     #async def save_values_to_file(self, mqtt_listen_queue: QueueType):
         """
         """
-        value_to_save = None
-
         while not self.cancelled:
             # asynchronously wait for the next queued value.
             logger.debug(f'waiting for queue...\n')
-            value_to_save = await mqtt_listen_queue.get()
-            logger.info('message: ' + value_to_save)
-
-            try:
-                pass
-
-            except TimeoutError:
-                # Ignore TimeoutErrors here.
-                # The intentional side effects are:
-                #  1) Close and save the output file because no values are being processed at the moment
-                #     and the file is not needed.
-                #  2) Go back to the top of the outside loop where we 'async' wait for the next queued value.
-                #  3) Because the output file has been closed it will need to be re-open,
-                #     this gives us the opportunity to use a new filename based on the current date
-                #     if the date has just changed.
-                logger.debug('file flushed and closed.')
-                pass
-            except Exception as err:
-                logger.error(f"Unexpected {err=}, {type(err)=}")
-                raise
+            queue_value = await mqtt_listen_queue.get()
+            logger.debug(queue_value)
+            print(queue_value)
 
 
     async def start(self):
