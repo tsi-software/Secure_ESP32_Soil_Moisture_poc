@@ -28,6 +28,29 @@ ACTIVE_CERTIFICATES_FILENAME = 'active_certificates.vars'
 #QueueType: TypeAlias = type(asyncio.Queue)
 
 
+CONTROLLER_SPECS = {
+    '05446845-5f69-4323-9061-ac2d5069992c': {
+        'name': '#1',
+        'device': 'ESP32-S3',
+    },
+    '3f36213a-ec4b-43ea-8a85-ac6098fac883': {
+        'name': '#2',
+        'device': 'ESP32-S3',
+    },
+    '517b462f-34ba-4c10-a41a-2310a8acd626': {
+        'name': '#3',
+        'device': 'ESP32-S2',
+    },
+    '3fcfc9da-f6b7-4815-841f-d822e1cf7180': {
+        'name': '#4',
+        'device': 'ESP32-S2',
+    },
+}
+
+def lookup_controller_specs(uuid):
+    return CONTROLLER_SPECS.get(uuid, None)
+
+
 
 #-------------------------------------------------------------------------------
 class SoilMoistureTouchpadMessage:
@@ -56,7 +79,6 @@ class SoilMoistureTouchpadMessage:
         self.touch_datetime = datetime.fromtimestamp(self.touch_timestamp, tz=timezone.utc).astimezone()
         self.touch_datetime_str = self.touch_datetime.strftime('%Y-%m-%d %H:%M:%S')
 
-        self.message_str = f'Touch Pad: controller={self.controller_uuid}, touchpad={self.touchpad} value={self.touch_value}, {self.touch_datetime_str}'
         self.valid = True
 
 
@@ -71,11 +93,25 @@ class SoilMoistureTouchpadMessage:
 
 
     def __str__(self) -> str:
-        return  self.message_str
+        return  self.get_message_str()
 
 
     def is_valid(self):
         return self.valid
+
+
+    def get_message_str(self):
+        if self.is_valid():
+            specs = lookup_controller_specs(self.controller_uuid)
+            if specs is None:
+                name = self.controller_uuid
+            else:
+                name = specs['name']
+
+            message_str = f'Watch Touch Pad: controller={name}, touchpad={self.touchpad} value={self.touch_value}, {self.touch_datetime_str}'
+            return message_str
+
+        return 'INVALID MESSAGE'
 
 
 
@@ -159,8 +195,8 @@ class WatchMqttMessages:
                     await mqtt_listen_queue.put(msg_str)
 
 
-    async def save_values_to_file(self, mqtt_listen_queue):
-    #async def save_values_to_file(self, mqtt_listen_queue: QueueType):
+    async def display_values(self, mqtt_listen_queue):
+    #async def display_values(self, mqtt_listen_queue: QueueType):
         """
         """
         while not self.cancelled:
@@ -182,20 +218,20 @@ class WatchMqttMessages:
         try:
             await asyncio.gather(
                 self.listen_for_moisture_values(mqtt_listen_queue),
-                self.save_values_to_file(mqtt_listen_queue),
+                self.display_values(mqtt_listen_queue),
             )
         finally:
             self.cancelled = True
         #
         # listen_task = asyncio.create_task(self.listen_for_moisture_values(mqtt_listen_queue))
-        # save_task = asyncio.create_task(self.save_values_to_file(mqtt_listen_queue))
+        # save_task = asyncio.create_task(self.display_values(mqtt_listen_queue))
         # await listen_task
         # await save_task
 
         # Python >= 11
         # async with asyncio.TaskGroup() as task_group:
         #     task_group.create_task(self.listen_for_moisture_values(mqtt_listen_queue))
-        #     task_group.create_task(self.save_values_to_file(mqtt_listen_queue))
+        #     task_group.create_task(self.display_values(mqtt_listen_queue))
 
 
 #-------------------------------------------------------------------------------
