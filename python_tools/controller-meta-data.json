@@ -101,28 +101,101 @@
                 {
                     "port": 1,
                     "label": "1",
-                    "color": "Orange",
+                    "color": "black",
                     "dry_threshold": null,
                     "wet_threshold": null
                 },
+
                 {
                     "port": 2,
                     "label": "2",
-                    "color": "Blue",
+                    "color": "saddlebrown",
                     "dry_threshold": null,
                     "wet_threshold": null
                 },
                 {
                     "port": 3,
                     "label": "3",
-                    "color": "Red",
+                    "color": "sandybrown",
                     "dry_threshold": null,
                     "wet_threshold": null
                 },
                 {
                     "port": 4,
                     "label": "4",
+                    "color": "DarkBlue",
+                    "dry_threshold": null,
+                    "wet_threshold": null
+                },
+                {
+                    "port": 5,
+                    "label": "5",
                     "color": "LightBlue",
+                    "dry_threshold": null,
+                    "wet_threshold": null
+                },
+                {
+                    "port": 6,
+                    "label": "6",
+                    "color": "DarkOrange",
+                    "dry_threshold": null,
+                    "wet_threshold": null
+                },
+                {
+                    "port": 7,
+                    "label": "7",
+                    "color": "moccasin",
+                    "dry_threshold": null,
+                    "wet_threshold": null
+                },
+                {
+                    "port": 8,
+                    "label": "8",
+                    "color": "DarkBlue",
+                    "dry_threshold": null,
+                    "wet_threshold": null
+                },
+                {
+                    "port": 9,
+                    "label": "9",
+                    "color": "LightBlue",
+                    "dry_threshold": null,
+                    "wet_threshold": null
+                },
+
+                {
+                    "port": 10,
+                    "label": "10",
+                    "color": "Brown",
+                    "dry_threshold": null,
+                    "wet_threshold": null
+                },
+                {
+                    "port": 11,
+                    "label": "11",
+                    "color": "Brown",
+                    "dry_threshold": null,
+                    "wet_threshold": null
+                },
+                {
+                    "port": 12,
+                    "label": "12",
+                    "color": "Green",
+                    "dry_threshold": null,
+                    "wet_threshold": null
+                },
+                {
+                    "port": 13,
+                    "label": "13",
+                    "color": "Green",
+                    "dry_threshold": null,
+                    "wet_threshold": null
+                },
+
+                {
+                    "port": 14,
+                    "label": "14",
+                    "color": "black",
                     "dry_threshold": null,
                     "wet_threshold": null
                 }
