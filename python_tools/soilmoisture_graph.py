@@ -93,7 +93,8 @@ def get_data_filenames(args, config):
 def from_utc_timestamp(utc_timestamp):
     """
     """
-    return datetime.fromtimestamp(int(utc_timestamp), tz=timezone.utc)
+    return datetime.fromtimestamp(int(utc_timestamp), tz=timezone.utc).astimezone()
+    #return datetime.fromtimestamp(int(utc_timestamp), tz=timezone.utc)
 
 
 
@@ -144,6 +145,8 @@ def read_sensor_data(args, config, controller_metadata):
 def plot_sensor_data(args, config, sensor_data, controller_metadata):
     """
     """
+    dt_now = datetime.now(timezone.utc).astimezone()
+
     #plot_data = sensor_data
     plot_data = sensor_data[(sensor_data.controller_name == '#4')]
     #plot_data = sensor_data[(sensor_data.controller_name == '#3') & (sensor_data.sensor_port == 4)]
@@ -159,18 +162,22 @@ def plot_sensor_data(args, config, sensor_data, controller_metadata):
         .pivot(columns='sensor_label', index='utc_date', values='sensor_value') \
         .interpolate(method='linear')
 
-    logger.debug(plot_data.info())
+    # logger.debug(plot_data.info())
     # logger.debug(plot_data.index)
     # logger.debug(plot_data.columns)
     # logger.debug(plot_data.head())
     # logger.debug(plot_data.tail())
     # plot_data.to_csv("tmp_plot_data.csv")
 
+    xlabel = f'Date ({dt_now.tzname()})'
+
     # see:
     # https://pandas.pydata.org/docs/user_guide/visualization.html
     # https://pandas.pydata.org/docs/user_guide/cookbook.html#plotting
     # https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.plot.html
     matplotlib_axes = plot_data.plot(
+        title = 'Soil Moisture Sensor',
+        xlabel = xlabel,
         kind = 'line',
         subplots = controller_metadata.get_subplot_groups(),
         color = controller_metadata.get_touch_sensor_line_colors(),
