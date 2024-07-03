@@ -102,6 +102,7 @@
                     "port": 1,
                     "label": "1",
                     "color": "black",
+                    "line_style": ":",
                     "dry_threshold": null,
                     "wet_threshold": null
                 },
@@ -123,14 +124,14 @@
                 {
                     "port": 4,
                     "label": "4",
-                    "color": "DarkBlue",
+                    "color": "DarkGreen",
                     "dry_threshold": null,
                     "wet_threshold": null
                 },
                 {
                     "port": 5,
                     "label": "5",
-                    "color": "LightBlue",
+                    "color": "LightGreen",
                     "dry_threshold": null,
                     "wet_threshold": null
                 },
@@ -167,6 +168,7 @@
                     "port": 10,
                     "label": "10",
                     "color": "Brown",
+                    "line_style": "-.",
                     "dry_threshold": null,
                     "wet_threshold": null
                 },
@@ -174,6 +176,7 @@
                     "port": 11,
                     "label": "11",
                     "color": "Brown",
+                    "line_style": "-.",
                     "dry_threshold": null,
                     "wet_threshold": null
                 },
@@ -181,6 +184,7 @@
                     "port": 12,
                     "label": "12",
                     "color": "Green",
+                    "line_style": "-.",
                     "dry_threshold": null,
                     "wet_threshold": null
                 },
@@ -188,6 +192,7 @@
                     "port": 13,
                     "label": "13",
                     "color": "Green",
+                    "line_style": "-.",
                     "dry_threshold": null,
                     "wet_threshold": null
                 },
@@ -196,6 +201,7 @@
                     "port": 14,
                     "label": "14",
                     "color": "black",
+                    "line_style": ":",
                     "dry_threshold": null,
                     "wet_threshold": null
                 }

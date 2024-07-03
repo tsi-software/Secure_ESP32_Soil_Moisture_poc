@@ -173,7 +173,8 @@ def plot_sensor_data(args, config, sensor_data, controller_metadata):
     matplotlib_axes = plot_data.plot(
         kind = 'line',
         subplots = controller_metadata.get_subplot_groups(),
-        color = controller_metadata.get_touch_sensor_colors(),
+        color = controller_metadata.get_touch_sensor_line_colors(),
+        style = controller_metadata.get_touch_sensor_line_styles(),
         sharex = True,
         sharey = False,
     )

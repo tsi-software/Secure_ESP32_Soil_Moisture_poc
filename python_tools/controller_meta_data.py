@@ -111,6 +111,10 @@ class ControllerMetaData:
         result = []
 
         for controller in self.iterate_controllers():
+            #TODO: FIX the need for THIS HACK!
+            if controller['name'] != '#4':
+                continue
+
             group = []
 
             for touch_sensor in self.iterate_touch_sensors(controller):
@@ -125,9 +129,9 @@ class ControllerMetaData:
 
 
 
-    def get_touch_sensor_colors(self):
+    def get_touch_sensor_line_colors(self):
         """
-        Return a dictionary of touch_sensor labels and their colors.
+        Return a dictionary of touch_sensor labels and their line colors.
         Example:
         return {
             '#2 (1)':'blue', '#2 (2)':'orange', '#2 (3)':'green', '#2 (4)':'red',
@@ -141,12 +145,42 @@ class ControllerMetaData:
             for touch_sensor in self.iterate_touch_sensors(controller):
                 sensor_label = self.format_touch_sensor_label(touch_sensor['name'], touch_sensor['label'])
 
+                #TODO: the following could be achieve with a single 'get(...)' call.
                 if 'color' in touch_sensor:
                     color = touch_sensor['color']
                 else:
                     color = default_color
 
                 result[sensor_label] = color
+
+        logger.debug(pformat(result))
+        return result
+
+
+
+    def get_touch_sensor_line_styles(self):
+        """
+        Return a dictionary of touch_sensor labels and their line styles.
+        Example:
+        return {
+            '#2 (1)':'-', '#2 (2)':':', '#2 (3)':'--', '#2 (4)':'-.',
+            '#3 (1)':'-', '#3 (2)':':', '#3 (3)':'--', '#3 (4)':'-.',
+        }
+        """
+        default_style = '-'
+        result = {}
+
+        for controller in self.iterate_controllers():
+            for touch_sensor in self.iterate_touch_sensors(controller):
+                sensor_label = self.format_touch_sensor_label(touch_sensor['name'], touch_sensor['label'])
+
+                #TODO: the following could be achieve with a single 'get(...)' call.
+                if 'line_style' in touch_sensor:
+                    line_style = touch_sensor['line_style']
+                else:
+                    line_style = default_style
+
+                result[sensor_label] = line_style
 
         logger.debug(pformat(result))
         return result
