@@ -144,7 +144,8 @@ def read_sensor_data(args, config, controller_metadata):
 def plot_sensor_data(args, config, sensor_data, controller_metadata):
     """
     """
-    plot_data = sensor_data
+    #plot_data = sensor_data
+    plot_data = sensor_data[(sensor_data.controller_name == '#4')]
     #plot_data = sensor_data[(sensor_data.controller_name == '#3') & (sensor_data.sensor_port == 4)]
 
         #[sensor_data.controller_name == '#2'] \
@@ -155,12 +156,15 @@ def plot_sensor_data(args, config, sensor_data, controller_metadata):
 
     plot_data = plot_data \
         .sort_values(by='utc_date') \
-        .pivot(columns='sensor_label', index='utc_date', values='sensor_value')
+        .pivot(columns='sensor_label', index='utc_date', values='sensor_value') \
+        .interpolate(method='linear')
 
-    # print(plot_data.index)
-    # print(plot_data.columns)
-    # print(plot_data.head())
-    # print(plot_data.tail())
+    logger.debug(plot_data.info())
+    # logger.debug(plot_data.index)
+    # logger.debug(plot_data.columns)
+    # logger.debug(plot_data.head())
+    # logger.debug(plot_data.tail())
+    # plot_data.to_csv("tmp_plot_data.csv")
 
     # see:
     # https://pandas.pydata.org/docs/user_guide/visualization.html
