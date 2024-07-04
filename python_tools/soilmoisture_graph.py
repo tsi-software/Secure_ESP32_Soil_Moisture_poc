@@ -249,11 +249,8 @@ def plot_sensor_data(args, config, sensor_data, controller_metadata):
         #[sensor_data['sensor_id'] != 'soilmoisture/1/capacitive/9'] \
     #--------------------------------------------------------------------------------------------------
 
+    # This must be called BEFORE the call to .pivot(...) below.
     controllers_and_ports = DistinctControllersAndPorts(plot_data)
-    #JUST TESTING!
-    logger.info(f'get_subplot_groups():\n{controllers_and_ports.get_subplot_groups()}')
-    logger.info(f'get_touch_sensor_line_colors():\n{controllers_and_ports.get_touch_sensor_line_colors()}')
-    logger.info(f'get_touch_sensor_line_styles():\n{controllers_and_ports.get_touch_sensor_line_styles()}')
 
     plot_data = plot_data \
         .sort_values(by='utc_date') \
@@ -280,9 +277,6 @@ def plot_sensor_data(args, config, sensor_data, controller_metadata):
         subplots = controllers_and_ports.get_subplot_groups(),
         color = controllers_and_ports.get_touch_sensor_line_colors(),
         style = controllers_and_ports.get_touch_sensor_line_styles(),
-        # subplots = controller_metadata.get_subplot_groups(),
-        # color = controller_metadata.get_touch_sensor_line_colors(),
-        # style = controller_metadata.get_touch_sensor_line_styles(),
         sharex = True,
         sharey = False,
     )
