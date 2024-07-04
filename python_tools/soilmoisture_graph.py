@@ -30,6 +30,89 @@ DEFAULT_CONFIG_FILENAME = 'config.ini'
 
 
 #-------------------------------------------------------------------------------
+class DistinctControllersAndPorts:
+    """
+    """
+    def __init__(self, dataframe):
+        """
+        """
+        #self.distinct_controllers = {}
+        self.process_dataframe(dataframe)
+
+
+    def process_dataframe(self, dataframe):
+        """
+        """
+        logger.info(f'process_dataframe(...):')
+        # logger.info(dataframe.info())
+        # logger.info(dataframe.head())
+
+        self.distinct_controllers_and_ports = dataframe \
+            .drop_duplicates(['controller_uuid', 'sensor_port']) \
+            .sort_values(by=['controller_name', 'sensor_port']) \
+            .reset_index(drop=True)
+
+        #.drop_duplicates(['controller_uuid', 'sensor_port']) [['controller_uuid', 'controller_name', 'sensor_label', 'sensor_port']]
+
+        logger.info(self.distinct_controllers_and_ports.info())
+        logger.info(self.distinct_controllers_and_ports.head(n=32))
+
+        self.distinct_controllers = self.distinct_controllers_and_ports \
+            .drop_duplicates(['controller_uuid']) [['controller_uuid', 'controller_name']]
+        logger.info(self.distinct_controllers.head(n=32))
+
+
+    def get_subplot_groups(self):
+        """
+        Example:
+        return [
+            ('#2 (1)', '#2 (2)', '#2 (3)', '#2 (4)'),
+            ('#3 (1)', '#3 (2)', '#3 (3)', '#3 (4)'),
+        ]
+        """
+        result = []
+
+        for name, group in self.distinct_controllers_and_ports.groupby('controller_uuid'):
+            grouped_labels = [label for label in group['sensor_label']]
+            result.append(grouped_labels)
+
+        logger.debug(f'get_subplot_groups():\n{pformat(result)}')
+        return result
+
+
+    def get_touch_sensor_line_colors(self):
+        """
+        Return a dictionary of touch_sensor labels and their line colors.
+        Example:
+        return {
+            '#2 (1)':'blue', '#2 (2)':'orange', '#2 (3)':'green', '#2 (4)':'red',
+            '#3 (1)':'black', '#3 (2)':'cyan', '#3 (3)':'green', '#3 (4)':'red',
+        }
+        """
+        df = self.distinct_controllers_and_ports
+        result = {label:color for label,color in zip(df['sensor_label'], df['sensor_color'])}
+        logger.debug(f'get_touch_sensor_line_colors():\n{pformat(result)}')
+        return result
+
+
+
+    def get_touch_sensor_line_styles(self):
+        """
+        Return a dictionary of touch_sensor labels and their line styles.
+        Example:
+        return {
+            '#2 (1)':'-', '#2 (2)':':', '#2 (3)':'--', '#2 (4)':'-.',
+            '#3 (1)':'-', '#3 (2)':':', '#3 (3)':'--', '#3 (4)':'-.',
+        }
+        """
+        df = self.distinct_controllers_and_ports
+        result = {label:style for label,style in zip(df['sensor_label'], df['sensor_line_style'])}
+        logger.debug(f'get_touch_sensor_line_styles():\n{pformat(result)}')
+        return result
+
+
+
+#-------------------------------------------------------------------------------
 def get_data_dir(args, config):
     """
     """
@@ -94,7 +177,6 @@ def from_utc_timestamp(utc_timestamp):
     """
     """
     return datetime.fromtimestamp(int(utc_timestamp), tz=timezone.utc).astimezone()
-    #return datetime.fromtimestamp(int(utc_timestamp), tz=timezone.utc)
 
 
 
@@ -118,6 +200,12 @@ def read_sensor_data(args, config, controller_metadata):
         )
         sensor_data['sensor_label'] = sensor_data['sensor_id'].apply(
             lambda sensor_id: controller_metadata.from_sensor_id(sensor_id, 'sensor_label')
+        )
+        sensor_data['sensor_color'] = sensor_data['sensor_id'].apply(
+            lambda sensor_id: controller_metadata.from_sensor_id(sensor_id, 'sensor_color')
+        )
+        sensor_data['sensor_line_style'] = sensor_data['sensor_id'].apply(
+            lambda sensor_id: controller_metadata.from_sensor_id(sensor_id, 'sensor_line_style')
         )
 
         #sensor_data = sensor_data.drop(columns='utc_timestamp')
@@ -147,8 +235,11 @@ def plot_sensor_data(args, config, sensor_data, controller_metadata):
     """
     dt_now = datetime.now(timezone.utc).astimezone()
 
-    #plot_data = sensor_data
-    plot_data = sensor_data[(sensor_data.controller_name == '#4')]
+    #TODO: CLEAN THIS UP!
+    #--------------------------------------------------------------------------------------------------
+    # Manually filter some of the data.
+    plot_data = sensor_data
+    #plot_data = sensor_data[(sensor_data.controller_name == '#4')]
     #plot_data = sensor_data[(sensor_data.controller_name == '#3') & (sensor_data.sensor_port == 4)]
 
         #[sensor_data.controller_name == '#2'] \
@@ -156,6 +247,13 @@ def plot_sensor_data(args, config, sensor_data, controller_metadata):
         #[sensor_data.sensor_id.str.startswith('soilmoisture/3f36213a-ec4b-43ea-8a85-ac6098fac883/')] \
         #[sensor_data['sensor_id'].str.startswith('soilmoisture/3f36213a-ec4b-43ea-8a85-ac6098fac883/')] \
         #[sensor_data['sensor_id'] != 'soilmoisture/1/capacitive/9'] \
+    #--------------------------------------------------------------------------------------------------
+
+    controllers_and_ports = DistinctControllersAndPorts(plot_data)
+    #JUST TESTING!
+    logger.info(f'get_subplot_groups():\n{controllers_and_ports.get_subplot_groups()}')
+    logger.info(f'get_touch_sensor_line_colors():\n{controllers_and_ports.get_touch_sensor_line_colors()}')
+    logger.info(f'get_touch_sensor_line_styles():\n{controllers_and_ports.get_touch_sensor_line_styles()}')
 
     plot_data = plot_data \
         .sort_values(by='utc_date') \
@@ -179,9 +277,12 @@ def plot_sensor_data(args, config, sensor_data, controller_metadata):
         title = 'Soil Moisture Sensor',
         xlabel = xlabel,
         kind = 'line',
-        subplots = controller_metadata.get_subplot_groups(),
-        color = controller_metadata.get_touch_sensor_line_colors(),
-        style = controller_metadata.get_touch_sensor_line_styles(),
+        subplots = controllers_and_ports.get_subplot_groups(),
+        color = controllers_and_ports.get_touch_sensor_line_colors(),
+        style = controllers_and_ports.get_touch_sensor_line_styles(),
+        # subplots = controller_metadata.get_subplot_groups(),
+        # color = controller_metadata.get_touch_sensor_line_colors(),
+        # style = controller_metadata.get_touch_sensor_line_styles(),
         sharex = True,
         sharey = False,
     )

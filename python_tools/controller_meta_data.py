@@ -5,6 +5,7 @@
 import json
 import logging
 from pprint import pformat
+from typing import Union
 
 logger = logging.getLogger('controller_meta_data')
 
@@ -38,13 +39,24 @@ class ControllerMetaData:
         for controller in self.raw_json_data['controllers']:
             if controller['uuid'] == controller_uuid:
                 return controller
-
+        #
         logger.warning('find_controller_uuid(...): "{}" NOT FOUND!'.format(controller_uuid))
         return None
 
 
 
-    def from_sensor_id(self, sensor_id, fieldname):
+    def find_touch_sensor(self, controller_metadata, sensor_port):
+        """
+        """
+        for sensor_dict in controller_metadata.get('touch_sensors', []):
+            if sensor_dict.get('port', None) == sensor_port:
+                return sensor_dict
+        #
+        logger.warning('find_touch_sensor(...): port {} NOT FOUND!'.format(sensor_port))
+        return None
+
+
+    def from_sensor_id(self, sensor_id: str, fieldname: str):
         """
         """
         if sensor_id not in self.controller_info_cache:
@@ -63,17 +75,42 @@ class ControllerMetaData:
 
             sensor_label = self.format_touch_sensor_label(controller_name, sensor_port)
 
+            # defaults.
+            #TODO: define these default values somewhere appropriate.
+            sensor_color = 'black'
+            sensor_line_style = '-'
+            # JSON values if available.
+            sensor = self.find_touch_sensor(metadata, sensor_port)
+            if sensor is not None:
+                sensor_color = sensor.get('color', sensor_color)
+                sensor_line_style = sensor.get('line_style', sensor_line_style)
+
             self.controller_info_cache[sensor_id] = {
                 'controller_uuid': controller_uuid,
                 'controller_name': controller_name,
                 'sensor_port': sensor_port,
                 'sensor_label': sensor_label,
+                'sensor_color': sensor_color,
+                'sensor_line_style': sensor_line_style,
             }
 
         return self.controller_info_cache[sensor_id][fieldname]
 
 
 
+    #DEPRECATED!
+    def is_in_cache(self, fieldname: str, fieldvalue: Union[str,int]) -> bool:
+        """
+        """
+        for cache_value in self.controller_info_cache.values():
+            if cache_value[fieldname] == fieldvalue:
+                return True
+
+        return False
+
+
+
+    #DEPRECATED!
     def iterate_controllers(self):
         """
         Yield controller dictionaries.
@@ -83,7 +120,17 @@ class ControllerMetaData:
             yield controller
 
 
+    #DEPRECATED!
+    def iterate_cached_controllers(self):
+        """
+        """
+        for controller in self.iterate_controllers():
+            if self.is_in_cache('controller_uuid', controller['uuid']):
+                yield controller
 
+
+
+    #DEPRECATED!
     def iterate_touch_sensors(self, controller):
         """
         Yield touch_sensor dictionaries with controller key,values merged in.
@@ -99,7 +146,17 @@ class ControllerMetaData:
                 yield controller_copy | touch_sensor
 
 
+    #DEPRECATED!
+    def iterate_cached_touch_sensors(self, controller):
+        """
+        """
+        for touch_sensor in self.iterate_touch_sensors(controller):
+            if self.is_in_cache('sensor_port', touch_sensor['port']):
+                yield touch_sensor
 
+
+
+    #DEPRECATED!
     def get_subplot_groups(self):
         """
         Example:
@@ -110,25 +167,22 @@ class ControllerMetaData:
         """
         result = []
 
-        for controller in self.iterate_controllers():
-            #TODO: FIX the need for THIS HACK!
-            if controller['name'] != '#4':
-                continue
-
+        for controller in self.iterate_cached_controllers():
             group = []
 
-            for touch_sensor in self.iterate_touch_sensors(controller):
+            for touch_sensor in self.iterate_cached_touch_sensors(controller):
                 sensor_label = self.format_touch_sensor_label(touch_sensor['name'], touch_sensor['label'])
                 group.append(sensor_label)
 
             if bool(group):
                 result.append(group)
 
-        logger.debug(pformat(result))
+        logger.debug(f'get_subplot_groups():\n{pformat(result)}')
         return result
 
 
 
+    #DEPRECATED!
     def get_touch_sensor_line_colors(self):
         """
         Return a dictionary of touch_sensor labels and their line colors.
@@ -141,8 +195,8 @@ class ControllerMetaData:
         default_color = 'grey'
         result = {}
 
-        for controller in self.iterate_controllers():
-            for touch_sensor in self.iterate_touch_sensors(controller):
+        for controller in self.iterate_cached_controllers():
+            for touch_sensor in self.iterate_cached_touch_sensors(controller):
                 sensor_label = self.format_touch_sensor_label(touch_sensor['name'], touch_sensor['label'])
 
                 #TODO: the following could be achieve with a single 'get(...)' call.
@@ -153,11 +207,12 @@ class ControllerMetaData:
 
                 result[sensor_label] = color
 
-        logger.debug(pformat(result))
+        logger.debug(f'get_touch_sensor_line_colors():\n{pformat(result)}')
         return result
 
 
 
+    #DEPRECATED!
     def get_touch_sensor_line_styles(self):
         """
         Return a dictionary of touch_sensor labels and their line styles.
@@ -170,8 +225,8 @@ class ControllerMetaData:
         default_style = '-'
         result = {}
 
-        for controller in self.iterate_controllers():
-            for touch_sensor in self.iterate_touch_sensors(controller):
+        for controller in self.iterate_cached_controllers():
+            for touch_sensor in self.iterate_cached_touch_sensors(controller):
                 sensor_label = self.format_touch_sensor_label(touch_sensor['name'], touch_sensor['label'])
 
                 #TODO: the following could be achieve with a single 'get(...)' call.
@@ -182,7 +237,7 @@ class ControllerMetaData:
 
                 result[sensor_label] = line_style
 
-        logger.debug(pformat(result))
+        logger.debug(f'get_touch_sensor_line_styles():\n{pformat(result)}')
         return result
 
 
