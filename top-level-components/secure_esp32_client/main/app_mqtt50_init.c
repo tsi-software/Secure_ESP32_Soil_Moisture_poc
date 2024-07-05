@@ -91,6 +91,8 @@ esp_mqtt_client_handle_t app_mqtt50_init(
             .key = client_key,
           },
         },
+        .session.keepalive = 120, //seconds
+        .session.disable_keepalive = false,
         .session.protocol_ver = MQTT_PROTOCOL_V_5,
         // .session.last_will.topic = "/topic/will",
         // .session.last_will.msg = "i will leave",
