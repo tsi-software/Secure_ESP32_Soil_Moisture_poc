@@ -10,5 +10,5 @@ idf_component_register(
 # see: https://cmake.org/cmake/help/latest/manual/cmake-variables.7.html
 nvs_create_partition_image(nvs /project/src/main/nonvolatile_storage.csv FLASH_IN_PROJECT)
 
-add_compile_definitions(APP_DEBUG)
-add_compile_definitions(DEBUG_TOUCH_PAD_NUMBER=1)
+#add_compile_definitions(APP_DEBUG)
+#add_compile_definitions(DEBUG_TOUCH_PAD_NUMBER=1)

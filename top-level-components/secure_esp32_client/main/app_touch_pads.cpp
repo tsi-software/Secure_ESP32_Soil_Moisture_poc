@@ -72,7 +72,7 @@ TouchValuesAverage_t:
 #endif
 
 
-static TouchValuesAverage_t touchValuesAverage(5); // 2^5 = 32 (average over 32 samples)
+static TouchValuesAverage_t touchValuesAverage(7); // 2^7 = 128 (average over 128 samples)
 static TouchValue_t prior_touch_value[TOUCH_PAD_MAX];
 static bool force_update = true;
 

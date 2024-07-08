@@ -61,28 +61,28 @@
                 {
                     "port": 1,
                     "label": "1",
-                    "color": "Orange",
+                    "color": "Moccasin",
                     "dry_threshold": null,
                     "wet_threshold": null
                 },
                 {
                     "port": 2,
                     "label": "2",
-                    "color": "Blue",
+                    "color": "Orange",
                     "dry_threshold": null,
                     "wet_threshold": null
                 },
                 {
                     "port": 3,
                     "label": "3",
-                    "color": "Moccasin",
+                    "color": "LightBlue",
                     "dry_threshold": null,
                     "wet_threshold": null
                 },
                 {
                     "port": 4,
                     "label": "4",
-                    "color": "LightBlue",
+                    "color": "Blue",
                     "dry_threshold": null,
                     "wet_threshold": null
                 }
