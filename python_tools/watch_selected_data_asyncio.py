@@ -131,7 +131,9 @@ class WatchMqttMessages:
         self.active_certificates = config_utils.get_active_certificates_vars(self.config_vars)
         self.certs_dir = config_utils.get_active_certificates_dir(self.active_certificates)
         self.connection_parameters = config_utils.get_connection_parameters(
-            self.config_vars, self.certs_dir, mqtt_protocol=aiomqtt.ProtocolVersion.V5
+            self.config_vars,
+            self.certs_dir,
+            mqtt_protocol=aiomqtt.ProtocolVersion.V5
         )
 
         tls_params = aiomqtt.TLSParameters(

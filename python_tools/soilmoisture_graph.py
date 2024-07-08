@@ -264,7 +264,7 @@ def plot_sensor_data(args, config, sensor_data, controller_metadata):
     # logger.debug(plot_data.tail())
     # plot_data.to_csv("tmp_plot_data.csv")
 
-    xlabel = f'Date ({dt_now.tzname()})'
+    label_x = f'Date & Hour ({dt_now.tzname()})'
 
     # see:
     # https://pandas.pydata.org/docs/user_guide/visualization.html
@@ -272,7 +272,7 @@ def plot_sensor_data(args, config, sensor_data, controller_metadata):
     # https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.plot.html
     matplotlib_axes = plot_data.plot(
         title = 'Soil Moisture Sensor',
-        xlabel = xlabel,
+        xlabel = label_x,
         kind = 'line',
         subplots = controllers_and_ports.get_subplot_groups(),
         color = controllers_and_ports.get_touch_sensor_line_colors(),
