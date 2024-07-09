@@ -17,7 +17,7 @@ import logging
 import os
 from pprint import pformat
 
-import soilmoisture_config_utils as config_utils
+import soilmoisture_config_utils as secure_connection_config
 
 logger = logging.getLogger('watch_selected_data_asyncio')
 ACTIVE_CERTIFICATES_FILENAME = 'active_certificates.vars'
@@ -127,11 +127,12 @@ class WatchMqttMessages:
         """
         self.cancelled = False
         self.args = args
-        self.config_vars = config_utils.read_config_file(self.args)
-        self.active_certificates = config_utils.get_active_certificates_vars(self.config_vars)
-        self.certs_dir = config_utils.get_active_certificates_dir(self.active_certificates)
-        self.connection_parameters = config_utils.get_connection_parameters(
-            self.config_vars,
+
+        self.secure_conn_vars = secure_connection_config.read_config_file(self.args)
+        self.active_certificates = secure_connection_config.get_active_certificates_vars(self.secure_conn_vars)
+        self.certs_dir = secure_connection_config.get_active_certificates_dir(self.active_certificates)
+        self.connection_parameters = secure_connection_config.get_connection_parameters(
+            self.secure_conn_vars,
             self.certs_dir,
             mqtt_protocol=aiomqtt.ProtocolVersion.V5
         )
@@ -242,7 +243,6 @@ def commandLineArgs():
             description='Listen for, and display, MQTT messages with the Topic "soilmoisture/#"'
         )
     parser.add_argument("--active", default=ACTIVE_CERTIFICATES_FILENAME,  help="Active Certificates Filename. (default: %(default)s)")
-    #parser.add_argument("--config", default=DEFAULT_CONFIG_FILENAME,  help="Configuration filename. (default: %(default)s)")
     parser.add_argument("--debug", action="store_true", help="Run in debug mode.")
     return parser.parse_args()
 

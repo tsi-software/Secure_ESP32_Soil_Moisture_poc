@@ -15,11 +15,16 @@ from pprint import pformat
 import ssl
 from typing import TypeAlias
 
+# The Docker --volume argument is used to position the 'python_tool' sub-directory.
+#sys.path.append('../python_tools')
+import python_tools.soilmoisture_config_utils as secure_connection_config
+
 logger = logging.getLogger('soilmoisture_listener')
 
 QueueType: TypeAlias = type(asyncio.Queue)
 
-DEFAULT_CONFIG_FILENAME = 'config.ini'
+ACTIVE_CERTIFICATES_FILENAME = 'active_certificates.vars'
+DEFAULT_APP_CONFIG_FILENAME = 'soilmoisture_listener.ini'
 
 
 
@@ -29,6 +34,54 @@ class SaveMqttMessages:
     """
 
     def __init__(self, args):
+        """
+        args is the Command Line Arguments.
+        Default config values are defined in this function.
+        """
+        #self.cancelled = False  # EXPERIMENTAL!
+        self.args = args
+
+        #--------------------------
+        # secure_connection_config
+        #--------------------------
+        self.secure_conn_vars = secure_connection_config.read_config_file(self.args)
+        self.active_certificates = secure_connection_config.get_active_certificates_vars(self.secure_conn_vars)
+        self.certs_dir = secure_connection_config.get_active_certificates_dir(self.active_certificates)
+        self.connection_parameters = secure_connection_config.get_connection_parameters(
+            self.secure_conn_vars,
+            self.certs_dir,
+            mqtt_protocol=aiomqtt.ProtocolVersion.V5
+        )
+
+        tls_params = aiomqtt.TLSParameters(
+            ca_certs = self.connection_parameters['tls_params']['ca_certs'],
+            certfile = self.connection_parameters['tls_params']['certfile'],
+            keyfile = self.connection_parameters['tls_params']['keyfile'],
+            cert_reqs = self.connection_parameters['tls_params']['cert_reqs'],
+            tls_version = self.connection_parameters['tls_params']['tls_version'],
+        )
+
+        self.hostname = self.connection_parameters['hostname']
+        self.mqtt_port = self.connection_parameters['port']
+        self.tls_params = tls_params
+        self.protocol = self.connection_parameters['protocol']
+
+        #-------------
+        # App Config:
+        #-------------
+        self.app_config = configparser.ConfigParser()
+        self.app_config.read(self.args.config)
+
+        self.mqtt_topic = self.app_config.get('MQTT Connection', 'topic', fallback='soilmoisture/#')
+        self.output_dir = Path(self.app_config.get('Output', 'output_dir', fallback='output_data'))
+        self.output_filename_prefix = self.app_config.get('Output', 'filename_prefix', fallback='soilmoisture_')
+        if '/' in self.output_filename_prefix:
+            raise Exception('Config Error: Output filename_prefix cannot contain a "/"')
+
+
+
+    #DEPRECATED!
+    def OLD__init__(self, args):
         """
         args is the Command Line Arguments.
         Default config values are defined in this function.
@@ -47,8 +100,12 @@ class SaveMqttMessages:
             cert_reqs = ssl.CERT_REQUIRED,
             tls_version = ssl.PROTOCOL_TLSv1_2,
         )
-        self.hostname = self.config.get('MQTT Connection', 'hostname')
-        self.port = self.config.getint('MQTT Connection', 'port', fallback=8883)
+
+        #TODO: FIX THIS!
+        #self.hostname = self.config.get('MQTT Connection', 'hostname')
+        self.hostname = 'max'
+
+        self.mqtt_port = self.config.getint('MQTT Connection', 'mqtt_port', fallback=8883)
         self.tls_params = tls_params
         self.protocol = aiomqtt.ProtocolVersion.V5
         #self.protocol = aiomqtt.ProtocolVersion.V311
@@ -63,7 +120,7 @@ class SaveMqttMessages:
     def __repr__(self) -> str:
         tmp = {
             'hostname': self.hostname,
-            'port': self.port,
+            'mqtt_port': self.mqtt_port,
             'tls_params': self.tls_params,
             'protocol': self.protocol,
             'mqtt_topic': self.mqtt_topic,
@@ -73,26 +130,26 @@ class SaveMqttMessages:
         return pformat(tmp)
 
 
-    def get_cert_dir(self) -> os.PathLike:
-        """
-        """
-        # Check the config file for a certificate directory.
-        cert_dir = self.config.get('MQTT Connection', 'cert_dir', fallback='')
-        if cert_dir and os.path.isdir(cert_dir):
-            return cert_dir
-
-        # And then try directories named 'private'.
-        common_dirs = (
-            './private',
-            '../private',
-            '../../private',
-            '~/private',
-        )
-        for test_dir in common_dirs:
-            if os.path.isdir(test_dir):
-                return test_dir
-
-        raise Exception('Certificate Directory NOT FOUND!')
+    # def get_cert_dir(self) -> os.PathLike:
+    #     """
+    #     """
+    #     # Check the config file for a certificate directory.
+    #     cert_dir = self.config.get('MQTT Connection', 'cert_dir', fallback='')
+    #     if cert_dir and os.path.isdir(cert_dir):
+    #         return cert_dir
+    #
+    #     # And then try directories named 'private'.
+    #     common_dirs = (
+    #         './private',
+    #         '../private',
+    #         '../../private',
+    #         '~/private',
+    #     )
+    #     for test_dir in common_dirs:
+    #         if os.path.isdir(test_dir):
+    #             return test_dir
+    #
+    #     raise Exception('Certificate Directory NOT FOUND!')
 
 
     def get_output_filename(self) -> os.PathLike:
@@ -124,7 +181,7 @@ class SaveMqttMessages:
         # https://sbtinstruments.github.io/aiomqtt/subscribing-to-a-topic.html
         async with aiomqtt.Client(
             hostname=self.hostname,
-            port=self.port,
+            port=self.mqtt_port,
             tls_params=self.tls_params,
             protocol=self.protocol
         ) as client:
@@ -218,7 +275,8 @@ def commandLineArgs():
     parser = argparse.ArgumentParser(
             description='Listen for, and save, MQTT messages with the Topic "soilmoisture/#"'
         )
-    parser.add_argument("--config", default=DEFAULT_CONFIG_FILENAME,  help="Configuration filename. (default: %(default)s)")
+    parser.add_argument("--active", default=ACTIVE_CERTIFICATES_FILENAME,  help="Active Certificates Filename. (default: %(default)s)")
+    parser.add_argument("--config", default=DEFAULT_APP_CONFIG_FILENAME,  help="App Configuration filename. (default: %(default)s)")
     parser.add_argument("--debug", action="store_true", help="Run in debug mode.")
     return parser.parse_args()
 
