@@ -1,4 +1,4 @@
-aiomqtt
+aiomqtt >= 2.0.0
 aiofiles
 matplotlib
 numpy
