@@ -79,44 +79,6 @@ class SaveMqttMessages:
             raise Exception('Config Error: Output filename_prefix cannot contain a "/"')
 
 
-
-    #DEPRECATED!
-    def OLD__init__(self, args):
-        """
-        args is the Command Line Arguments.
-        Default config values are defined in this function.
-        """
-        self.args = args
-
-        self.config = configparser.ConfigParser()
-        self.config.read(self.args.config)
-
-        # MQTT Connection Parameters:
-        cert_dir: os.PathLike = Path(self.get_cert_dir())
-        tls_params = aiomqtt.TLSParameters(
-            ca_certs = cert_dir / 'mosq_ca.crt',
-            certfile = cert_dir / 'mosq_client.crt',
-            keyfile  = cert_dir / 'mosq_client.key',
-            cert_reqs = ssl.CERT_REQUIRED,
-            tls_version = ssl.PROTOCOL_TLSv1_2,
-        )
-
-        #TODO: FIX THIS!
-        #self.hostname = self.config.get('MQTT Connection', 'hostname')
-        self.hostname = 'max'
-
-        self.mqtt_port = self.config.getint('MQTT Connection', 'mqtt_port', fallback=8883)
-        self.tls_params = tls_params
-        self.protocol = aiomqtt.ProtocolVersion.V5
-        #self.protocol = aiomqtt.ProtocolVersion.V311
-        self.mqtt_topic = self.config.get('MQTT Connection', 'topic', fallback='soilmoisture/#')
-
-        self.output_dir = Path(self.config.get('Output', 'output_dir', fallback='output_data'))
-        self.output_filename_prefix = self.config.get('Output', 'filename_prefix', fallback='soilmoisture_')
-        if '/' in self.output_filename_prefix:
-            raise Exception('Config Error: Output filename_prefix cannot contain a "/"')
-
-
     def __repr__(self) -> str:
         tmp = {
             'hostname': self.hostname,
@@ -130,35 +92,15 @@ class SaveMqttMessages:
         return pformat(tmp)
 
 
-    # def get_cert_dir(self) -> os.PathLike:
-    #     """
-    #     """
-    #     # Check the config file for a certificate directory.
-    #     cert_dir = self.config.get('MQTT Connection', 'cert_dir', fallback='')
-    #     if cert_dir and os.path.isdir(cert_dir):
-    #         return cert_dir
-    #
-    #     # And then try directories named 'private'.
-    #     common_dirs = (
-    #         './private',
-    #         '../private',
-    #         '../../private',
-    #         '~/private',
-    #     )
-    #     for test_dir in common_dirs:
-    #         if os.path.isdir(test_dir):
-    #             return test_dir
-    #
-    #     raise Exception('Certificate Directory NOT FOUND!')
-
-
     def get_output_filename(self) -> os.PathLike:
         """
         Return a filename based on the current date.
         """
-        now = datetime.now(timezone.utc).astimezone()
+        # Always use UTC
+        now = datetime.now(timezone.utc)
+        #now = datetime.now(timezone.utc).astimezone()
         filename = now.strftime(self.output_filename_prefix + "%Y-%m-%d_%Z.csv")
-        #e.g. filename = 'soilmoisture_2023-11-10_PST.csv'
+        #e.g. filename = 'soilmoisture_2023-11-10_UTC.csv'
         return self.output_dir / filename
 
 
