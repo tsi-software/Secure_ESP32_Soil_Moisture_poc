@@ -138,31 +138,27 @@ def get_data_dir(args, config):
 
 
 
-def get_data_filenames(args, config):
+def get_data_filenames(args, config, from_timestamp_utc, to_timestamp_utc):
     """
+    ALL DATES are stored internally as UTC!
+    Local time zones, if used at all, are only referenced when data is finally displayed.
     """
-    now = datetime.now(timezone.utc)
-
     sensor_data_dir = Path(get_data_dir(args, config))
     filename_format = 'soilmoisture_{}*.csv'
 
-    logger.debug('now: ' + now.strftime('%Y-%m-%d'))
-    logger.debug(f'{args.days=}')
-
-    # Add 1 to the 'number of days' in case that one day earlier happens to contain "spill-over" data.
-    # This also handles UTC data converted to another timezone.
-    sample_dates = [now-timedelta(days=day) for day in range(args.days)]
-    logger.debug('sample_dates:\n{}'.format(pformat(sample_dates)))
+    sample_dates = [date for date in date_range_generator(from_timestamp_utc, to_timestamp_utc)]
+    logger.info('sample_dates:\n{}'.format(pformat(sample_dates)))
 
     # e.g.
     # sensor_data_filenames = [
     #     sensor_data_dir / 'soilmoisture_2023-11-14.csv',
     #     sensor_data_dir / 'soilmoisture_2023-11-15.csv',
     #     sensor_data_dir / 'soilmoisture_2024-06-19_PDT.csv',
+    #     sensor_data_dir / 'soilmoisture_2024-06-19_UTC.csv',
     # ]
     sensor_data_filenames = []
     for sample_date in sample_dates:
-        # e.g. sensor_data_dir / 'soilmoisture_2023-11-14_PDT.csv'
+        # e.g. sensor_data_dir / 'soilmoisture_2023-11-14_UTC.csv'
         sample_files = sensor_data_dir.glob( filename_format.format(sample_date.strftime('%Y-%m-%d')) )
         for sample_file in sample_files:
             sensor_data_filenames.append(sample_file)
@@ -173,6 +169,7 @@ def get_data_filenames(args, config):
 
 
 
+#TODO: rename to 'to_datetime'
 def from_utc_timestamp(utc_timestamp):
     """
     """
@@ -180,12 +177,70 @@ def from_utc_timestamp(utc_timestamp):
 
 
 
+def date_range_generator(from_timestamp_utc: int, to_timestamp_utc: int):
+    """
+    """
+    iter_date = datetime.fromtimestamp(from_timestamp_utc, tz=timezone.utc)
+    iter_date.replace(hour=0, minute=0, second=0, microsecond=0)
+
+    end_date = datetime.fromtimestamp(to_timestamp_utc, tz=timezone.utc)
+    end_date.replace(hour=0, minute=0, second=0, microsecond=0)
+
+    step = timedelta(days=1)
+
+    # Handle the case when from_timestamp_utc and to_timestamp_utc
+    # are both on the same day but at different times.
+    while iter_date < end_date:
+        yield iter_date
+        iter_date += step
+
+    # This helps handle the case when from_timestamp_utc and to_timestamp_utc
+    # are both on the same day but at different times.
+    yield datetime.fromtimestamp(to_timestamp_utc, tz=timezone.utc)
+
+
+
+def get_data_date_range(args):
+    """
+    """
+    now = datetime.now(timezone.utc)
+    logger.info('now: ' + now.strftime('%Y-%m-%d %H:%M:%S %Z'))
+    logger.info(f'{args.days=}, {args.hours=}')
+
+    to_datetime = now
+
+    if args.hours is None:
+        # Calculate Days.
+        from_datetime = now - timedelta(days=args.days)
+    else:
+        # Calculate Hours.
+        from_datetime = now - timedelta(hours=args.hours)
+
+    logger.info('from: ' + from_datetime.strftime('%Y-%m-%d %H:%M:%S %Z'))
+
+    from_timestamp_utc = from_datetime.timestamp()
+    to_timestamp_utc  =  to_datetime.timestamp()
+    logger.info(f'{from_timestamp_utc=}, {to_timestamp_utc=}')
+    return from_timestamp_utc, to_timestamp_utc
+
+
+
 def read_sensor_data(args, config, controller_metadata):
     """
     """
+    from_timestamp_utc, to_timestamp_utc = get_data_date_range(args)
+
     dataframes = []
-    for filename in get_data_filenames(args, config):
+    for filename in get_data_filenames(args, config, from_timestamp_utc, to_timestamp_utc):
         sensor_data = pd.read_csv(filename)
+
+        # Filter out data outside of the desire date range.
+        sensor_data = sensor_data[
+          (sensor_data.utc_timestamp >= from_timestamp_utc) & (sensor_data.utc_timestamp <= to_timestamp_utc)
+        ]
+        if sensor_data.empty:
+            continue
+
         sensor_data['utc_date'] = sensor_data['utc_timestamp'].apply(from_utc_timestamp)
 
         # Add new columns based on the values encoded in sensor_id.
@@ -226,7 +281,10 @@ def read_sensor_data(args, config, controller_metadata):
     # For full list of useful options, see:
     # pd.describe_option('display')
 
-    return pd.concat(dataframes, ignore_index=True)
+    if not dataframes:
+        return None
+    else:
+        return pd.concat(dataframes, ignore_index=True)
 
 
 
@@ -298,7 +356,9 @@ def commandLineArgs():
         )
     parser.add_argument("--config", default=DEFAULT_CONFIG_FILENAME,  help="Configuration filename. (default: %(default)s)")
     parser.add_argument("--debug", action="store_true", help="Run in debug mode.")
-    parser.add_argument("--days", type=int, default=7,  help="Display sensor data for the given number of days. (default: %(default)s)")
+    mutex_group = parser.add_mutually_exclusive_group()
+    mutex_group.add_argument("--days", type=int, default=3,  help="Display sensor data for the given number of days. (default: %(default)s)")
+    mutex_group.add_argument("--hours", type=int,  help="Display sensor data for the given number of hours.")
     return parser.parse_args()
 
 
