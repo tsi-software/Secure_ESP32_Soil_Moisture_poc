@@ -113,63 +113,8 @@ class DistinctControllersAndPorts:
 
 
 #-------------------------------------------------------------------------------
-def get_data_dir(args, config):
-    """
-    """
-    data_dirs = [
-        'output_data',
-        '../output_data',
-        '../../output_data',
-    ]
-
-    config_output_dir = config.get('Output', 'output_dir', fallback=None)
-    if config_output_dir is not None:
-        data_dirs.insert(0, config_output_dir)
-        logger.debug(f'{config_output_dir=}')
-    else:
-        logger.debug("config['Output']['output_dir'] NOT GIVEN.")
-
-    for test_dir in data_dirs:
-        if os.path.isdir(test_dir):
-            logger.info(f'data dir: {test_dir}')
-            return test_dir
-
-    raise Exception('Sensor Data directory NOT FOUND!')
-
-
-
-def get_data_filenames(args, config, from_timestamp_utc, to_timestamp_utc):
-    """
-    ALL DATES are stored internally as UTC!
-    Local time zones, if used at all, are only referenced when data is finally displayed.
-    """
-    sensor_data_dir = Path(get_data_dir(args, config))
-    filename_format = 'soilmoisture_{}*.csv'
-
-    sample_dates = [date for date in date_range_generator(from_timestamp_utc, to_timestamp_utc)]
-    logger.info('sample_dates:\n{}'.format(pformat(sample_dates)))
-
-    # e.g.
-    # sensor_data_filenames = [
-    #     sensor_data_dir / 'soilmoisture_2023-11-14.csv',
-    #     sensor_data_dir / 'soilmoisture_2023-11-15.csv',
-    #     sensor_data_dir / 'soilmoisture_2024-06-19_PDT.csv',
-    #     sensor_data_dir / 'soilmoisture_2024-06-19_UTC.csv',
-    # ]
-    sensor_data_filenames = []
-    for sample_date in sample_dates:
-        # e.g. sensor_data_dir / 'soilmoisture_2023-11-14_UTC.csv'
-        sample_files = sensor_data_dir.glob( filename_format.format(sample_date.strftime('%Y-%m-%d')) )
-        for sample_file in sample_files:
-            sensor_data_filenames.append(sample_file)
-    #
-    logger.info('sensor_data_filenames:\n{}'.format(pformat(sensor_data_filenames)))
-
-    return sensor_data_filenames
-
-
-
-#TODO: rename to 'to_datetime'
+# Callback functions:
+#-------------------------------------------------------------------------------
 def from_utc_timestamp(utc_timestamp):
     """
     """
@@ -177,175 +122,240 @@ def from_utc_timestamp(utc_timestamp):
 
 
 
-def date_range_generator(from_timestamp_utc: int, to_timestamp_utc: int):
+#-------------------------------------------------------------------------------
+class SoilMoistureGraph:
     """
     """
-    iter_date = datetime.fromtimestamp(from_timestamp_utc, tz=timezone.utc)
-    iter_date.replace(hour=0, minute=0, second=0, microsecond=0)
-
-    end_date = datetime.fromtimestamp(to_timestamp_utc, tz=timezone.utc)
-    end_date.replace(hour=0, minute=0, second=0, microsecond=0)
-
-    step = timedelta(days=1)
-
-    # Handle the case when from_timestamp_utc and to_timestamp_utc
-    # are both on the same day but at different times.
-    while iter_date < end_date:
-        yield iter_date
-        iter_date += step
-
-    # This helps handle the case when from_timestamp_utc and to_timestamp_utc
-    # are both on the same day but at different times.
-    yield datetime.fromtimestamp(to_timestamp_utc, tz=timezone.utc)
+    def __init__(self, args, config):
+        """
+        """
+        self.now = datetime.now(timezone.utc) # Always get the current time as soon as possible.
+        self.args = args
+        self.config = config
+        self.from_timestamp_utc, self.to_timestamp_utc = self.get_input_date_range()
 
 
 
-def get_data_date_range(args):
-    """
-    """
-    now = datetime.now(timezone.utc)
-    logger.info('now: ' + now.strftime('%Y-%m-%d %H:%M:%S %Z'))
-    logger.info(f'{args.days=}, {args.hours=}')
+    def get_input_date_range(self):
+        """
+        """
+        logger.info('now: ' + self.now.strftime('%Y-%m-%d %H:%M:%S %Z'))
+        logger.info(f'{self.args.days=}, {self.args.hours=}')
 
-    to_datetime = now
+        to_datetime = self.now
 
-    if args.hours is None:
-        # Calculate Days.
-        from_datetime = now - timedelta(days=args.days)
-    else:
-        # Calculate Hours.
-        from_datetime = now - timedelta(hours=args.hours)
+        if self.args.hours is None:
+            # Calculate Days.
+            from_datetime = self.now - timedelta(days=self.args.days)
+        else:
+            # Calculate Hours.
+            from_datetime = self.now - timedelta(hours=self.args.hours)
 
-    logger.info('from: ' + from_datetime.strftime('%Y-%m-%d %H:%M:%S %Z'))
+        logger.info('from: ' + from_datetime.strftime('%Y-%m-%d %H:%M:%S %Z'))
 
-    from_timestamp_utc = from_datetime.timestamp()
-    to_timestamp_utc  =  to_datetime.timestamp()
-    logger.info(f'{from_timestamp_utc=}, {to_timestamp_utc=}')
-    return from_timestamp_utc, to_timestamp_utc
-
+        from_timestamp_utc = from_datetime.timestamp()
+        to_timestamp_utc  =  to_datetime.timestamp()
+        logger.info(f'{from_timestamp_utc=}, {to_timestamp_utc=}')
+        return from_timestamp_utc, to_timestamp_utc
 
 
-def read_sensor_data(args, config, controller_metadata):
-    """
-    """
-    from_timestamp_utc, to_timestamp_utc = get_data_date_range(args)
 
-    dataframes = []
-    for filename in get_data_filenames(args, config, from_timestamp_utc, to_timestamp_utc):
-        sensor_data = pd.read_csv(filename)
+    def date_range_generator(self):
+        """
+        """
+        iter_date = datetime.fromtimestamp(self.from_timestamp_utc, tz=timezone.utc)
+        iter_date.replace(hour=0, minute=0, second=0, microsecond=0)
 
-        # Filter out data outside of the desire date range.
-        sensor_data = sensor_data[
-          (sensor_data.utc_timestamp >= from_timestamp_utc) & (sensor_data.utc_timestamp <= to_timestamp_utc)
+        end_date = datetime.fromtimestamp(self.to_timestamp_utc, tz=timezone.utc)
+        end_date.replace(hour=0, minute=0, second=0, microsecond=0)
+
+        step = timedelta(days=1)
+
+        # Handle the case when from_timestamp_utc and to_timestamp_utc
+        # are both on the same day but at different times.
+        while iter_date < end_date:
+            yield iter_date
+            iter_date += step
+
+        # This helps handle the case when from_timestamp_utc and to_timestamp_utc
+        # are both on the same day but at different times.
+        yield datetime.fromtimestamp(self.to_timestamp_utc, tz=timezone.utc)
+
+
+
+    def get_data_dir(self):
+        """
+        """
+        data_dirs = [
+            'output_data',
+            '../output_data',
+            '../../output_data',
         ]
-        if sensor_data.empty:
-            continue
 
-        sensor_data['utc_date'] = sensor_data['utc_timestamp'].apply(from_utc_timestamp)
+        config_output_dir = self.config.get('Output', 'output_dir', fallback=None)
+        if config_output_dir is not None:
+            data_dirs.insert(0, config_output_dir)
+            logger.debug(f'{config_output_dir=}')
+        else:
+            logger.debug("config['Output']['output_dir'] NOT GIVEN.")
 
-        # Add new columns based on the values encoded in sensor_id.
-        sensor_data['controller_uuid'] = sensor_data['sensor_id'].apply(
-            lambda sensor_id: controller_metadata.from_sensor_id(sensor_id, 'controller_uuid')
+        for test_dir in data_dirs:
+            if os.path.isdir(test_dir):
+                logger.info(f'data dir: {test_dir}')
+                return test_dir
+
+        raise Exception('Sensor Data directory NOT FOUND!')
+
+
+
+    def get_data_filenames(self):
+        """
+        ALL DATES are stored internally as UTC!
+        Local time zones, if used at all, are only referenced when data is finally displayed.
+        """
+        sensor_data_dir = Path(self.get_data_dir())
+        filename_format = 'soilmoisture_{}*.csv'
+
+        sample_dates = [date for date in self.date_range_generator()]
+        logger.info('sample_dates:\n{}'.format(pformat(sample_dates)))
+
+        # e.g.
+        # sensor_data_filenames = [
+        #     sensor_data_dir / 'soilmoisture_2023-11-14.csv',
+        #     sensor_data_dir / 'soilmoisture_2023-11-15.csv',
+        #     sensor_data_dir / 'soilmoisture_2024-06-19_PDT.csv',
+        #     sensor_data_dir / 'soilmoisture_2024-06-19_UTC.csv',
+        # ]
+        sensor_data_filenames = []
+        for sample_date in sample_dates:
+            # e.g. sensor_data_dir / 'soilmoisture_2023-11-14_UTC.csv'
+            sample_files = sensor_data_dir.glob( filename_format.format(sample_date.strftime('%Y-%m-%d')) )
+            for sample_file in sample_files:
+                sensor_data_filenames.append(sample_file)
+        #
+        logger.info('sensor_data_filenames:\n{}'.format(pformat(sensor_data_filenames)))
+
+        return sensor_data_filenames
+
+
+
+    def read_sensor_data(self, controller_metadata):
+        """
+        """
+        dataframes = []
+        for filename in self.get_data_filenames():
+            sensor_data = pd.read_csv(filename)
+
+            # Filter out data outside of the desire date range.
+            sensor_data = sensor_data[
+              (sensor_data.utc_timestamp >= self.from_timestamp_utc) & (sensor_data.utc_timestamp <= self.to_timestamp_utc)
+            ]
+            if sensor_data.empty:
+                continue
+
+            sensor_data['utc_date'] = sensor_data['utc_timestamp'].apply(from_utc_timestamp)
+
+            # Add new columns based on the values encoded in sensor_id.
+            sensor_data['controller_uuid'] = sensor_data['sensor_id'].apply(
+                lambda sensor_id: controller_metadata.from_sensor_id(sensor_id, 'controller_uuid')
+            )
+            sensor_data['controller_name'] = sensor_data['sensor_id'].apply(
+                lambda sensor_id: controller_metadata.from_sensor_id(sensor_id, 'controller_name')
+            )
+            sensor_data['sensor_port'] = sensor_data['sensor_id'].apply(
+                lambda sensor_id: controller_metadata.from_sensor_id(sensor_id, 'sensor_port')
+            )
+            sensor_data['sensor_label'] = sensor_data['sensor_id'].apply(
+                lambda sensor_id: controller_metadata.from_sensor_id(sensor_id, 'sensor_label')
+            )
+            sensor_data['sensor_color'] = sensor_data['sensor_id'].apply(
+                lambda sensor_id: controller_metadata.from_sensor_id(sensor_id, 'sensor_color')
+            )
+            sensor_data['sensor_line_style'] = sensor_data['sensor_id'].apply(
+                lambda sensor_id: controller_metadata.from_sensor_id(sensor_id, 'sensor_line_style')
+            )
+
+            #sensor_data = sensor_data.drop(columns='utc_timestamp')
+            dataframes.append(sensor_data)
+
+        # Column Names: sensor_id, sensor_value, utc_timestamp, utc_date
+        # logger.debug(sensor_data.info())
+        # logger.debug(sensor_data)
+        # logger.debug(sensor_data.to_markdown())
+        # 
+        # pd.set_option('display.max_rows', None)
+        # pd.set_option('display.max_rows', 60)
+        # pd.get_option('display.max_rows')
+        # pd.set_option('display.max_columns', None)  # or 1000
+        # pd.set_option('display.max_rows', None)  # or 1000
+        # pd.set_option('display.max_colwidth', None)  # or 199
+        #
+        # For full list of useful options, see:
+        # pd.describe_option('display')
+
+        if not dataframes:
+            return None
+        else:
+            return pd.concat(dataframes, ignore_index=True)
+
+
+
+    def plot_sensor_data(self, sensor_data, controller_metadata):
+        """
+        """
+        #TODO: CLEAN THIS UP!
+        #--------------------------------------------------------------------------------------------------
+        # Manually filter some of the data.
+        plot_data = sensor_data
+        #plot_data = sensor_data[(sensor_data.controller_name == '#4')]
+        #plot_data = sensor_data[(sensor_data.controller_name == '#3') & (sensor_data.sensor_port == 4)]
+
+            #[sensor_data.controller_name == '#2'] \
+            #[sensor_data.sensor_id.str.startswith('soilmoisture/517b462f-34ba-4c10-a41a-2310a8acd626/')] \
+            #[sensor_data.sensor_id.str.startswith('soilmoisture/3f36213a-ec4b-43ea-8a85-ac6098fac883/')] \
+            #[sensor_data['sensor_id'].str.startswith('soilmoisture/3f36213a-ec4b-43ea-8a85-ac6098fac883/')] \
+            #[sensor_data['sensor_id'] != 'soilmoisture/1/capacitive/9'] \
+        #--------------------------------------------------------------------------------------------------
+
+        # This must be called BEFORE the call to .pivot(...) below.
+        controllers_and_ports = DistinctControllersAndPorts(plot_data)
+
+        plot_data = plot_data \
+            .sort_values(by='utc_date') \
+            .pivot(columns='sensor_label', index='utc_date', values='sensor_value') \
+            .interpolate(method='linear')
+
+        # logger.debug(plot_data.info())
+        # logger.debug(plot_data.index)
+        # logger.debug(plot_data.columns)
+        # logger.debug(plot_data.head())
+        # logger.debug(plot_data.tail())
+        # plot_data.to_csv("tmp_plot_data.csv")
+
+        label_x = f'Date & Hour ({self.now.tzname()})'
+
+        # see:
+        # https://pandas.pydata.org/docs/user_guide/visualization.html
+        # https://pandas.pydata.org/docs/user_guide/cookbook.html#plotting
+        # https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.plot.html
+        matplotlib_axes = plot_data.plot(
+            title = 'Soil Moisture Sensor',
+            xlabel = label_x,
+            kind = 'line',
+            subplots = controllers_and_ports.get_subplot_groups(),
+            color = controllers_and_ports.get_touch_sensor_line_colors(),
+            style = controllers_and_ports.get_touch_sensor_line_styles(),
+            sharex = True,
+            sharey = False,
         )
-        sensor_data['controller_name'] = sensor_data['sensor_id'].apply(
-            lambda sensor_id: controller_metadata.from_sensor_id(sensor_id, 'controller_name')
-        )
-        sensor_data['sensor_port'] = sensor_data['sensor_id'].apply(
-            lambda sensor_id: controller_metadata.from_sensor_id(sensor_id, 'sensor_port')
-        )
-        sensor_data['sensor_label'] = sensor_data['sensor_id'].apply(
-            lambda sensor_id: controller_metadata.from_sensor_id(sensor_id, 'sensor_label')
-        )
-        sensor_data['sensor_color'] = sensor_data['sensor_id'].apply(
-            lambda sensor_id: controller_metadata.from_sensor_id(sensor_id, 'sensor_color')
-        )
-        sensor_data['sensor_line_style'] = sensor_data['sensor_id'].apply(
-            lambda sensor_id: controller_metadata.from_sensor_id(sensor_id, 'sensor_line_style')
-        )
+        #layout = (1,2), #(rows,cols)
 
-        #sensor_data = sensor_data.drop(columns='utc_timestamp')
-        dataframes.append(sensor_data)
+        # https://pandas.pydata.org/docs/user_guide/visualization.html#automatic-date-tick-adjustment
+        # Iterate each subplot.
+        for ax in matplotlib_axes:
+            ax.figure.autofmt_xdate()
 
-    # Column Names: sensor_id, sensor_value, utc_timestamp, utc_date
-    # logger.debug(sensor_data.info())
-    # logger.debug(sensor_data)
-    # logger.debug(sensor_data.to_markdown())
-    # 
-    # pd.set_option('display.max_rows', None)
-    # pd.set_option('display.max_rows', 60)
-    # pd.get_option('display.max_rows')
-    # pd.set_option('display.max_columns', None)  # or 1000
-    # pd.set_option('display.max_rows', None)  # or 1000
-    # pd.set_option('display.max_colwidth', None)  # or 199
-    #
-    # For full list of useful options, see:
-    # pd.describe_option('display')
-
-    if not dataframes:
-        return None
-    else:
-        return pd.concat(dataframes, ignore_index=True)
-
-
-
-def plot_sensor_data(args, config, sensor_data, controller_metadata):
-    """
-    """
-    dt_now = datetime.now(timezone.utc).astimezone()
-
-    #TODO: CLEAN THIS UP!
-    #--------------------------------------------------------------------------------------------------
-    # Manually filter some of the data.
-    plot_data = sensor_data
-    #plot_data = sensor_data[(sensor_data.controller_name == '#4')]
-    #plot_data = sensor_data[(sensor_data.controller_name == '#3') & (sensor_data.sensor_port == 4)]
-
-        #[sensor_data.controller_name == '#2'] \
-        #[sensor_data.sensor_id.str.startswith('soilmoisture/517b462f-34ba-4c10-a41a-2310a8acd626/')] \
-        #[sensor_data.sensor_id.str.startswith('soilmoisture/3f36213a-ec4b-43ea-8a85-ac6098fac883/')] \
-        #[sensor_data['sensor_id'].str.startswith('soilmoisture/3f36213a-ec4b-43ea-8a85-ac6098fac883/')] \
-        #[sensor_data['sensor_id'] != 'soilmoisture/1/capacitive/9'] \
-    #--------------------------------------------------------------------------------------------------
-
-    # This must be called BEFORE the call to .pivot(...) below.
-    controllers_and_ports = DistinctControllersAndPorts(plot_data)
-
-    plot_data = plot_data \
-        .sort_values(by='utc_date') \
-        .pivot(columns='sensor_label', index='utc_date', values='sensor_value') \
-        .interpolate(method='linear')
-
-    # logger.debug(plot_data.info())
-    # logger.debug(plot_data.index)
-    # logger.debug(plot_data.columns)
-    # logger.debug(plot_data.head())
-    # logger.debug(plot_data.tail())
-    # plot_data.to_csv("tmp_plot_data.csv")
-
-    label_x = f'Date & Hour ({dt_now.tzname()})'
-
-    # see:
-    # https://pandas.pydata.org/docs/user_guide/visualization.html
-    # https://pandas.pydata.org/docs/user_guide/cookbook.html#plotting
-    # https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.plot.html
-    matplotlib_axes = plot_data.plot(
-        title = 'Soil Moisture Sensor',
-        xlabel = label_x,
-        kind = 'line',
-        subplots = controllers_and_ports.get_subplot_groups(),
-        color = controllers_and_ports.get_touch_sensor_line_colors(),
-        style = controllers_and_ports.get_touch_sensor_line_styles(),
-        sharex = True,
-        sharey = False,
-    )
-    #layout = (1,2), #(rows,cols)
-
-    # https://pandas.pydata.org/docs/user_guide/visualization.html#automatic-date-tick-adjustment
-    # Iterate each subplot.
-    for ax in matplotlib_axes:
-        ax.figure.autofmt_xdate()
-
-    plt.show()
+        plt.show()
 
 
 
@@ -370,9 +380,11 @@ def main(args) -> None:
 
     controller_metadata = ControllerMetaData('controller-meta-data.json')
 
-    sensor_data = read_sensor_data(args, config, controller_metadata)
+    soil_moisture_graph = SoilMoistureGraph(args, config)
+
+    sensor_data = soil_moisture_graph.read_sensor_data(controller_metadata)
     print('')
-    plot_sensor_data(args, config, sensor_data, controller_metadata)
+    soil_moisture_graph.plot_sensor_data(sensor_data, controller_metadata)
     print('')
 
 
