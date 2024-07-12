@@ -68,9 +68,15 @@ class ControllerMetaData:
             controller_uuid = parts[1]
             sensor_port = int(parts[3])
 
+            controller_visible = False
+            sensor_visible = False
+
             metadata = self.find_controller_uuid(controller_uuid)
             if metadata:
                 controller_name = metadata['name']
+                # Default 'visible' to True here, this implies that by virtue of having
+                #  controller info it should be visible, unless specifically set to False.
+                controller_visible = metadata.get('visible', True)
             else:
                 controller_name = controller_uuid
 
@@ -85,14 +91,19 @@ class ControllerMetaData:
             if sensor is not None:
                 sensor_color = sensor.get('color', sensor_color)
                 sensor_line_style = sensor.get('line_style', sensor_line_style)
+                # Default 'visible' to True here, this implies that by virtue of having
+                #  sensor info it should be visible, unless specifically set to False.
+                sensor_visible = sensor.get('visible', True)
 
             self.controller_info_cache[sensor_id] = {
                 'controller_uuid': controller_uuid,
                 'controller_name': controller_name,
+                'controller_visible': controller_visible,
                 'sensor_port': sensor_port,
                 'sensor_label': sensor_label,
                 'sensor_color': sensor_color,
                 'sensor_line_style': sensor_line_style,
+                'sensor_visible': sensor_visible,
             }
 
         return self.controller_info_cache[sensor_id][fieldname]
@@ -100,30 +111,30 @@ class ControllerMetaData:
 
 
     #DEPRECATED!
-    def iterate_controllers(self):
-        """
-        Yield controller dictionaries.
-        """
-        key = 'controllers'
-        for controller in self.raw_json_data[key]:
-            yield controller
+    # def iterate_controllers(self):
+    #     """
+    #     Yield controller dictionaries.
+    #     """
+    #     key = 'controllers'
+    #     for controller in self.raw_json_data[key]:
+    #         yield controller
 
 
 
     #DEPRECATED!
-    def iterate_touch_sensors(self, controller):
-        """
-        Yield touch_sensor dictionaries with controller key,values merged in.
-        """
-        key = 'touch_sensors'
-
-        # In case the controller is not configured with Touch Sensors.
-        if key in controller:
-            controller_copy = controller.copy()
-            del controller_copy[key]
-
-            for touch_sensor in controller[key]:
-                yield controller_copy | touch_sensor
+    # def iterate_touch_sensors(self, controller):
+    #     """
+    #     Yield touch_sensor dictionaries with controller key,values merged in.
+    #     """
+    #     key = 'touch_sensors'
+    #
+    #     # In case the controller is not configured with Touch Sensors.
+    #     if key in controller:
+    #         controller_copy = controller.copy()
+    #         del controller_copy[key]
+    #
+    #         for touch_sensor in controller[key]:
+    #             yield controller_copy | touch_sensor
 
 
 

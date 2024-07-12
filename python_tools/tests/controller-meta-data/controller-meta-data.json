@@ -15,7 +15,7 @@
         {
             "uuid": "3f36213a-ec4b-43ea-8a85-ac6098fac883",
             "name": "#2",
-            "visible": true,
+            "visible": false,
             "specs": {
                 "chip": "ESP32-S3",
                 "description": "ESP32-S3-DevKitC-1 N16R8 N8R2, Original S3 N16R8"
@@ -37,7 +37,6 @@
                 },
                 {
                     "port": 3,
-                    "visible": false,
                     "label": "3",
                     "dry_threshold": null,
                     "wet_threshold": null
@@ -78,7 +77,6 @@
                 },
                 {
                     "port": 3,
-                    "visible": false,
                     "label": "3",
                     "color": "LightBlue",
                     "dry_threshold": null,
@@ -86,7 +84,6 @@
                 },
                 {
                     "port": 4,
-                    "visible": false,
                     "label": "4",
                     "color": "Blue",
                     "dry_threshold": null,

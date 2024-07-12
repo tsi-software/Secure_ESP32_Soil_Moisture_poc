@@ -262,6 +262,10 @@ class SoilMoistureGraph:
             sensor_data['controller_name'] = sensor_data['sensor_id'].apply(
                 lambda sensor_id: controller_metadata.from_sensor_id(sensor_id, 'controller_name')
             )
+            sensor_data['controller_visible'] = sensor_data['sensor_id'].apply(
+                lambda sensor_id: controller_metadata.from_sensor_id(sensor_id, 'controller_visible')
+            )
+            #
             sensor_data['sensor_port'] = sensor_data['sensor_id'].apply(
                 lambda sensor_id: controller_metadata.from_sensor_id(sensor_id, 'sensor_port')
             )
@@ -273,6 +277,9 @@ class SoilMoistureGraph:
             )
             sensor_data['sensor_line_style'] = sensor_data['sensor_id'].apply(
                 lambda sensor_id: controller_metadata.from_sensor_id(sensor_id, 'sensor_line_style')
+            )
+            sensor_data['sensor_visible'] = sensor_data['sensor_id'].apply(
+                lambda sensor_id: controller_metadata.from_sensor_id(sensor_id, 'sensor_visible')
             )
 
             #sensor_data = sensor_data.drop(columns='utc_timestamp')
@@ -306,7 +313,8 @@ class SoilMoistureGraph:
         #TODO: CLEAN THIS UP!
         #--------------------------------------------------------------------------------------------------
         # Manually filter some of the data.
-        plot_data = sensor_data
+        plot_data = sensor_data[(sensor_data.controller_visible) & (sensor_data.sensor_visible)]
+
         #plot_data = sensor_data[(sensor_data.controller_name == '#4')]
         #plot_data = sensor_data[(sensor_data.controller_name == '#3') & (sensor_data.sensor_port == 4)]
 
