@@ -130,6 +130,8 @@ class SoilMoistureGraph:
         """
         """
         self.now = datetime.now(timezone.utc) # Always get the current time as soon as possible.
+        self.plot_title = 'Soil Moisture Sensor'
+        self.date_range_str = ''
         self.args = args
         self.config = config
         self.from_timestamp_utc, self.to_timestamp_utc = self.get_input_date_range()
@@ -143,13 +145,24 @@ class SoilMoistureGraph:
         logger.info(f'{self.args.days=}, {self.args.hours=}')
 
         to_datetime = self.now
+        date_range_suffix = ''
 
         if self.args.hours is None:
             # Calculate Days.
             from_datetime = self.now - timedelta(days=self.args.days)
+            date_range_suffix = f'({self.args.days} days)'
         else:
             # Calculate Hours.
             from_datetime = self.now - timedelta(hours=self.args.hours)
+            date_range_suffix = f'({self.args.hours} hours)'
+
+        dt1 = from_datetime.astimezone()
+        dt2 = to_datetime.astimezone()
+        self.date_range_str = '{} to {} {}'.format(
+            dt1.strftime('%m-%d %H:%M %Z'),
+            dt2.strftime('%m-%d %H:%M %Z'),
+            date_range_suffix
+        )
 
         logger.info('from: ' + from_datetime.strftime('%Y-%m-%d %H:%M:%S %Z'))
 
@@ -347,7 +360,7 @@ class SoilMoistureGraph:
         # https://pandas.pydata.org/docs/user_guide/cookbook.html#plotting
         # https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.plot.html
         matplotlib_axes = plot_data.plot(
-            title = 'Soil Moisture Sensor',
+            title = f'{self.plot_title} [{self.date_range_str}]',
             xlabel = label_x,
             kind = 'line',
             subplots = controllers_and_ports.get_subplot_groups(),
